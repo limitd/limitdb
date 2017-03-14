@@ -234,6 +234,9 @@ describe('LimitDB', () => {
         db.take({ type: 'ip', key: '8.8.8.8' }, done);
       }, (err, results) => {
         if (err) return done(err);
+        results.forEach((r, i) => {
+          assert.equal(r.remaining + i + 1, 10);
+        });
         assert.ok(results.every(r => r.conformant));
         db.take({ type: 'ip', key: '8.8.8.8' }, (err, response) => {
           assert.notOk(response.conformant);
@@ -241,6 +244,7 @@ describe('LimitDB', () => {
         });
       });
     });
+
   });
 
   describe('PUT', function () {
