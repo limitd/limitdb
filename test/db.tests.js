@@ -315,7 +315,7 @@ describe('LimitDB', () => {
           assert.equal(result.items.length, 10);
           for(var i = 0; i < 10; i++) {
             assert.equal(result.items[i].key, `some-prefix-${i}`);
-            assert.equal(result.items[i].size, 10);
+            assert.equal(result.items[i].limit, 10);
             assert.equal(result.items[i].reset, now + 1);
           }
           done();
