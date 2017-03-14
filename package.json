@@ -1,8 +1,8 @@
 {
   "name": "limitdb",
   "version": "2.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A database for limits on top of leveldb.",
+  "main": "lib/db.js",
   "repository": {
     "type": "git",
     "url": "http://github.com/limitd/limitdb.git"
