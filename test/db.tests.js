@@ -321,6 +321,52 @@ describe('LimitDB', () => {
         });
       });
     });
-
   });
+
+  describe('WAIT', function () {
+    const db = new LimitDB({
+      inMemory: true,
+      types
+    });
+
+    it('should work with a simple request', (done) => {
+      var now = 1425920267;
+      MockDate.set(now * 1000);
+      db.wait({ type: 'ip', key: '211.76.23.4' }, (err, response) => {
+        if (err) return done(err);
+        assert.ok(response.conformant);
+        assert.notOk(response.delayed);
+
+
+        assert.equal(response.remaining, 9);
+        assert.equal(response.reset, now + 1);
+
+        done();
+      });
+    });
+
+    it('should be delayed when traffic is non conformant', function (done) {
+      db.take({
+        type: 'ip',
+        key: '211.76.23.5',
+        count: 10
+      }, (err) => {
+        if (err) return done(err);
+        const waitingSince = Date.now();
+        db.wait({
+          type: 'ip',
+          key: '211.76.23.5',
+          count: 3
+        }, function (err, response) {
+          if (err) { return done(err); }
+          var waited = Date.now() - waitingSince;
+          assert.ok(response.conformant);
+          assert.ok(response.delayed);
+          assert.closeTo(waited, 600, 20);
+          done();
+        });
+      });
+    });
+  });
+
 });
