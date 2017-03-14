@@ -298,7 +298,9 @@ describe('LimitDB', () => {
       types
     });
 
-    it.skip('should return a list of buckets matching the prefix', (done) => {
+    it('should return a list of buckets matching the prefix', (done) => {
+      const now = 1425920267;
+      MockDate.set(now * 1000);
       async.map(_.range(10), (i, done) => {
         db.take({ type: 'ip', key: `some-prefix-${i}` }, done);
       }, (err, results) => {
@@ -308,93 +310,13 @@ describe('LimitDB', () => {
           assert.equal(result.items.length, 10);
           for(var i = 0; i < 10; i++) {
             assert.equal(result.items[i].key, `some-prefix-${i}`);
-            assert.euqal(result.items[i].size, 10);
-            assert.euqal(result.items[i].reset, 10);
+            assert.equal(result.items[i].size, 10);
+            assert.equal(result.items[i].reset, now + 1);
           }
           done();
         });
       });
-
-      // const ip = '211.11.84.12';
-      // db.take({ type: 'ip', key: ip}, function (err) {
-      //   if (err) return done(err);
-      //   db.status({ type: 'ip', prefix: ip }, function (err, response) {
-      //     if (err) return done(err);
-      //     assert.equal(response.items[0].remaining, 9);
-      //     done();
-      //   });
-      // });
     });
-
-    // it('should work for unlimited', function (done) {
-    //   var now = 1425920267;
-    //   MockDate.set(now * 1000);
-    //   client.take('ip', '0.0.0.0', function (err) {
-    //     if (err) return done(err);
-    //     client.status('ip', '0.0.0.0', function (err, response) {
-    //       if (err) return done(err);
-    //       assert.equal(response.items.length, 0);
-    //       done();
-    //     });
-    //   });
-    // });
-
-    // it('should work for fixed buckets', function (done) {
-    //   client.take('wrong_password', 'curichiaga', function (err) {
-    //     if (err) return done(err);
-    //     client.status('wrong_password', 'curichiaga', function (err, response) {
-    //       if (err) return done(err);
-    //       assert.equal(response.items[0].remaining, 2);
-    //       done();
-    //     });
-    //   });
-    // });
-
-
-    // it('should not return fulfilled fixed buckets', function (done) {
-    //   client.take('wrong_password', 'catrasca', function (err) {
-    //     if (err) return done(err);
-    //     client.put('wrong_password', 'catrasca', function (err) {
-    //       if (err) return done(err);
-    //       client.status('wrong_password', 'catrasca', function (err, response) {
-    //         if (err) return done(err);
-    //         assert.equal(response.items.length, 0);
-    //         done();
-    //       });
-    //     });
-    //   });
-    // });
-
-    // it('should not fail if bucket doesnt exists', function (done) {
-    //   client.status('ip', '12312312321312321', function (err, response) {
-    //     if (err) return done(err);
-    //     assert.equal(response.items.length, 0);
-    //     done();
-    //   });
-    // });
-
-    // it.skip('should work with subclasses', function (done) {
-
-    //   async.parallel([
-    //     function (cb) { client.take('ip', 'class1|192.123.21.1', cb); },
-    //     function (cb) { client.take('ip', 'class1|192.123.21.2', cb); },
-    //     function (cb) { client.take('ip', 'class1|192.123.21.2', cb); },
-    //     function (cb) { client.take('ip', 'class2|192.123.21.3', cb); },
-    //   ], function (err) {
-    //     if (err) return done(err);
-    //     //this will retrieve all bucket instances of ip - class1
-    //     client.status('ip', 'class1', function (err, response) {
-    //       if (err) return done(err);
-    //       assert.equal(response.items.length, 2);
-    //       assert.equal(response.items[0].remaining, 9);
-    //       assert.equal(response.items[0].instance, 'class1|192.123.21.1');
-    //       assert.equal(response.items[1].remaining, 8);
-    //       assert.equal(response.items[1].instance, 'class1|192.123.21.2');
-    //       done();
-    //     });
-    //   });
-
-    // });
 
   });
 });
