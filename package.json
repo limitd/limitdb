@@ -1,6 +1,6 @@
 {
   "name": "limitdb",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A database for limits on top of leveldb.",
   "main": "lib/db.js",
   "repository": {
