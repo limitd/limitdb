@@ -311,6 +311,7 @@ describe('LimitDB', () => {
         if (err) return done(err);
         assert.ok(results.every(r => r.conformant));
         db.status({ type: 'ip', prefix: 'some-prefix' }, (err, result) => {
+          if (err) { return done(err); }
           assert.equal(result.items.length, 10);
           for(var i = 0; i < 10; i++) {
             assert.equal(result.items[i].key, `some-prefix-${i}`);
