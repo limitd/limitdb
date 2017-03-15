@@ -77,6 +77,20 @@ describe('LimitDB', () => {
       });
     });
 
+
+    it('should work :)', (done) => {
+      const takeParams = { type: 'ip',  key: '21.17.65.41'};
+      db.take(takeParams, (err) => {
+        if (err) return done(err);
+        db.take(takeParams, (err, result) => {
+          if (err) { return done(err); }
+          assert.equal(result.conformant, true);
+          assert.equal(result.remaining, 8);
+          done();
+        });
+      });
+    });
+
     it('should return TRUE when traffic is conformant', (done) => {
       var now = 1425920267;
       MockDate.set(now * 1000);
@@ -262,6 +276,22 @@ describe('LimitDB', () => {
           db.take(bucketKey, function (err, response) {
             if (err) return done(err);
             assert.equal(response.remaining, 9);
+            done();
+          });
+        });
+      });
+    });
+
+    it('should restore the bucket when reseting with all', (done) => {
+      const takeParams = { type: 'ip',  key: '21.17.65.41', count: 9 };
+      db.take(takeParams, (err) => {
+        if (err) return done(err);
+        db.put({ type: 'ip',  key: '21.17.65.41', count: 1, all: true }, (err) => {
+          if (err) return done(err);
+          db.take(takeParams, function (err, response) {
+            if (err) return done(err);
+            assert.equal(response.conformant, true);
+            assert.equal(response.remaining, 1);
             done();
           });
         });
