@@ -346,8 +346,24 @@ describe('LimitDB', () => {
           for(var i = 0; i < 10; i++) {
             assert.equal(result.items[i].key, `some-prefix-${i}`);
             assert.equal(result.items[i].limit, 10);
+            assert.equal(result.items[i].remaining, 9);
             assert.equal(result.items[i].reset, now + 1);
           }
+          done();
+        });
+      });
+    });
+
+    it('should drip on status', (done) => {
+      const now = 1425920267;
+      MockDate.set(now * 1000);
+
+      db.take({ type: 'ip', key: `187.213.89.1`, count: 10 }, (err) => {
+        if (err) { return done(err); }
+        MockDate.set((now + 1) * 1000);
+        db.status({ type: 'ip', prefix: '187.213.89.1' }, (err, status) => {
+          if (err) { return done(err); }
+          assert.equal(status.items[0].remaining, 5);
           done();
         });
       });
