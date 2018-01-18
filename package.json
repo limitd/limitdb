@@ -8,7 +8,7 @@
     "url": "http://github.com/limitd/limitdb.git"
   },
   "scripts": {
-    "test": "rm -rf test/testdb* && NODE_ENV=test mocha"
+    "test": "rm -rf test/testdb* && NODE_ENV=test mocha --timeout 5000"
   },
   "author": "",
   "license": "ISC",
@@ -21,7 +21,8 @@
     "lodash": "^4.17.4",
     "lru-cache": "^4.0.2",
     "memdown": "^1.2.4",
-    "ms": "^0.7.3"
+    "ms": "^0.7.3",
+    "very-fast-args": "^1.1.0"
   },
   "devDependencies": {
     "async": "^2.1.5",

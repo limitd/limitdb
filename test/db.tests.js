@@ -377,7 +377,7 @@ describe('LimitDB', () => {
       types
     });
 
-    it('should return a list of buckets matching the prefix', (done) => {
+    it.only('should return a list of buckets matching the prefix', (done) => {
       const now = 1425920267;
       MockDate.set(now * 1000);
       async.map(_.range(10), (i, done) => {
