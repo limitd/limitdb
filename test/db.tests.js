@@ -91,6 +91,21 @@ describe('LimitDB', () => {
       });
     });
 
+
+    //this doesn't work because inMemory doesn't support GC
+    it.only('should add a ttl to unused buckets', function (done) {
+      const params = { type: 'ip', key: '211.45.66.1'};
+      db.take(params, function (err) {
+        if (err) return done(err);
+        setTimeout(function () {
+          db._types[params.type].db.get(params.key, function (err, result) {
+            assert.isUndefined(result);
+            done();
+          });
+        }, 3000);
+      });
+    });
+
     it('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
       var now = 1425920267;
       db.take({
