@@ -91,6 +91,36 @@ describe('LimitDB', () => {
       });
     });
 
+    it('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
+      var now = 1425920267;
+      db.take({
+        type: 'ip',
+        key:  '5.5.5.5'
+      }, function (err) {
+        if (err) return done(err);
+        db.put({
+          type: 'ip',
+          key:  '5.5.5.5',
+        }, (err) => {
+          if (err) return done(err);
+          MockDate.set(now * 1000);
+          db.take({
+            type: 'ip',
+            key:  '5.5.5.5'
+          }, function (err, result) {
+            if (err) return done(err);
+
+            assert.ok(result.conformant);
+            assert.equal(result.remaining, 9);
+            assert.equal(result.reset, now + 1);
+            assert.equal(result.limit, 10);
+
+            done();
+          });
+        });
+      });
+    });
+
     it('should return TRUE when traffic is conformant', (done) => {
       var now = 1425920267;
       MockDate.set(now * 1000);
