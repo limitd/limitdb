@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/limitd/limitdb.svg)](https://travis-ci.org/limitd/limitdb)
+[![Build Status](https://travis-ci.org/limitd/limitdb.svg?branch=master)](https://travis-ci.org/limitd/limitdb)
 
 limitdb is a database for limits on top of leveldb.
 
