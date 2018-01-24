@@ -93,7 +93,7 @@ describe('LimitDB', () => {
 
 
     //this doesn't work because inMemory doesn't support GC
-    it.only('should add a ttl to unused buckets', function (done) {
+    it.skip('should add a ttl to unused buckets', function (done) {
       const params = { type: 'ip', key: '211.45.66.1'};
       db.take(params, function (err) {
         if (err) return done(err);
