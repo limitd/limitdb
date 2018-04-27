@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+
+const spawn = require('child_process').spawn;
+const leveldown = require('leveldown');
+
+if (require.main === module) {
+  const db = leveldown(process.argv[2]);
+
+  db.open((err) => {
+    if (err) {
+      process.exit(1);
+    }
+    process.exit(0);
+  });
+
+  return;
+}
+
+module.exports.check = function(path, callback) {
+  const proc = spawn(process.execPath, [ __filename, path ], { stdio: 'pipe' });
+
+  var timedout = false;
+
+  const timeout = setTimeout(() => {
+    timedout = true;
+    proc.kill(9);
+    return callback(new Error('database needs repair'));
+  }, 5000);
+
+  proc.once('exit', code => {
+    if (timedout) { return; }
+    clearTimeout(timeout);
+    callback(code !== 0 ? new Error('error checking the database') : null);
+  });
+}
