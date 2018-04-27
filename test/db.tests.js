@@ -461,4 +461,18 @@ describe('LimitDB', () => {
     });
   });
 
+  describe('close', function() {
+    const db = new LimitDB({
+      inMemory: true,
+      types
+    });
+
+    it('should close the underlying levelup and call the callback', (done) => {
+      db.close((err) => {
+        if (err) { return done(err); }
+        assert.isOk(db._db.isClosed());
+        done();
+      });
+    });
+  });
 });
