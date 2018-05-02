@@ -1,16 +1,40 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const path = require('path');
 const spawn = require('child_process').spawn;
 const leveldown = require('leveldown');
 
-if (require.main === module) {
-  const db = leveldown(process.argv[2]);
+//200Mb is the maximun allowed size for the manifest file.
+//It is better to run compaction when the file is bigger than this.
+const MAX_MANIFEST_SIZE = 200 * 1024 * 1024;
 
-  db.open((err) => {
+if (require.main === module) {
+  const dbLocation = process.argv[2];
+  const manifestFile = fs.readdirSync(dbLocation)
+                         .find(f => f.match(/MANIFEST\-\d*/));
+
+  if (fs.statSync(path.join(dbLocation, manifestFile)).size > MAX_MANIFEST_SIZE) {
+    console.error('The manifest file is too big, please run repair.');
+    return process.exit(1);
+  }
+
+  console.log('opening ', dbLocation);
+  const db = leveldown(dbLocation);
+
+  const exit = (code) => {
+    db.close(() => process.exit(code));
+  };
+
+  db.open({
+    paranoidChecks: true
+  },(err) => {
     if (err) {
-      process.exit(1);
+      console.log(err.message);
+      return exit(1);
     }
-    process.exit(0);
+    console.log('open!');
+    exit(0);
   });
 
   return;
