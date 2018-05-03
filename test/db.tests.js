@@ -50,10 +50,15 @@ describe('LimitDB', () => {
   });
 
 
-  describe('take', () => {
-    const db = new LimitDB({
-      inMemory: true,
-      types
+  describe('TAKE', () => {
+    var db;
+
+    before(function(done) {
+      db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      db.once('ready', done);
     });
 
     it('should fail when type is not provided', (done) => {
@@ -307,9 +312,14 @@ describe('LimitDB', () => {
   });
 
   describe('PUT', function () {
-    const db = new LimitDB({
-      inMemory: true,
-      types
+    var db;
+
+    before(function(done) {
+      db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      db.once('ready', done);
     });
 
     it('should restore the bucket when reseting', (done) => {
@@ -372,9 +382,14 @@ describe('LimitDB', () => {
   });
 
   describe('STATUS', function () {
-    const db = new LimitDB({
-      inMemory: true,
-      types
+    var db;
+
+    before(function(done) {
+      db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      db.once('ready', done);
     });
 
     it('should return a list of buckets matching the prefix', (done) => {
@@ -416,9 +431,14 @@ describe('LimitDB', () => {
   });
 
   describe('WAIT', function () {
-    const db = new LimitDB({
-      inMemory: true,
-      types
+    var db;
+
+    before(function(done) {
+      db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      db.once('ready', done);
     });
 
     it('should work with a simple request', (done) => {
@@ -461,10 +481,33 @@ describe('LimitDB', () => {
     });
   });
 
+  describe('isOpen', function() {
+    it('should return false when initializing', function() {
+      const db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      assert.notOk(db.isOpen());
+    });
+
+    it('should return true when is ready', function() {
+      const db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      db.once('ready', () => assert.ok(db.isOpen()));
+    });
+  });
+
   describe('close', function() {
-    const db = new LimitDB({
-      inMemory: true,
-      types
+    var db;
+
+    before(function(done) {
+      db = new LimitDB({
+        inMemory: true,
+        types
+      });
+      db.once('ready', done);
     });
 
     it('should close the underlying levelup and call the callback', (done) => {
