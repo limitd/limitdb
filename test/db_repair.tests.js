@@ -1,3 +1,4 @@
+const tmp = require('tmp');
 const LimitDB  = require('../lib/db');
 const assert   = require('chai').assert;
 
@@ -33,3 +34,26 @@ describeOrSkip('Repair Database', () => {
     });
   });
 });
+
+describe('repair db 2', function() {
+  var db, start;
+
+  before(function() {
+    db = new LimitDB({
+      path: tmp.dirSync().name,
+      types: {
+        ip: { per_second: 5 }
+      }
+    });
+
+    start = Date.now();
+  });
+
+  it('should not emit repairing for empty path', function(done) {
+    db.once('ready', done);
+    db.once('repairing', () => {
+      done(new Error('this should not be triggered'));
+    });
+  });
+});
+

@@ -14,7 +14,7 @@ if (require.main === module) {
   const manifestFile = fs.readdirSync(dbLocation)
                          .find(f => f.match(/MANIFEST\-\d*/));
 
-  if (fs.statSync(path.join(dbLocation, manifestFile)).size > MAX_MANIFEST_SIZE) {
+  if (manifestFile && fs.statSync(path.join(dbLocation, manifestFile)).size > MAX_MANIFEST_SIZE) {
     console.error('The manifest file is too big, please run repair.');
     return process.exit(1);
   }
