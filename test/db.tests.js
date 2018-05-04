@@ -1,3 +1,4 @@
+const tmp = require('tmp');
 const LimitDB  = require('../lib/db');
 const MockDate = require('mockdate');
 const assert   = require('chai').assert;
@@ -36,7 +37,37 @@ const types = {
   }
 };
 
-describe('LimitDB', () => {
+const configs = {
+  'leveldb': () => {
+    return {
+      types,
+      path: tmp.dirSync().name
+    };
+  },
+  'leveldb (inMemory)': () => {
+    return {
+      types,
+      inMemory: true
+    };
+  },
+  'rocksdb': () => {
+    return {
+      driver: 'rocksdb',
+      types,
+      path: tmp.dirSync().name
+    };
+  }
+};
+
+function describeForEachConfig(callback) {
+  Object.keys(configs).forEach(name => {
+    describe(`LimitDB with ${name}`, () => {
+      callback(configs[name]);
+    });
+  });
+}
+
+describeForEachConfig((getConfig) => {
   it('should throw an error when path is not specified', () => {
     assert.throws(() => new LimitDB({}), /path is required/);
   });
@@ -54,10 +85,7 @@ describe('LimitDB', () => {
     var db;
 
     before(function(done) {
-      db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      db = new LimitDB(getConfig());
       db.once('ready', done);
     });
 
@@ -314,10 +342,7 @@ describe('LimitDB', () => {
     var db;
 
     before(function(done) {
-      db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      db = new LimitDB(getConfig());
       db.once('ready', done);
     });
 
@@ -384,10 +409,7 @@ describe('LimitDB', () => {
     var db;
 
     before(function(done) {
-      db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      db = new LimitDB(getConfig());
       db.once('ready', done);
     });
 
@@ -433,10 +455,7 @@ describe('LimitDB', () => {
     var db;
 
     before(function(done) {
-      db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      db = new LimitDB(getConfig());
       db.once('ready', done);
     });
 
@@ -482,18 +501,12 @@ describe('LimitDB', () => {
 
   describe('isOpen', function() {
     it('should return false when initializing', function() {
-      const db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      const db = new LimitDB(getConfig());
       assert.notOk(db.isOpen());
     });
 
     it('should return true when is ready', function() {
-      const db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      const db = new LimitDB(getConfig());
       db.once('ready', () => assert.ok(db.isOpen()));
     });
   });
@@ -502,10 +515,7 @@ describe('LimitDB', () => {
     var db;
 
     before(function(done) {
-      db = new LimitDB({
-        inMemory: true,
-        types
-      });
+      db = new LimitDB(getConfig());
       db.once('ready', done);
     });
 
