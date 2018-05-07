@@ -30,7 +30,7 @@ const limitdb = new Limitdb({
 Options available:
 
 - `path` (string): a path for the leveldb database.
-- `inMemory` (boolean): true to run with [memdown](https://github.com/Level/memdown).
+- `inMemory` (boolean): set this to true to run the entire database in memory.
 - `types` (object): setup your bucket types.
 
 The type defines the characteristics of a the bucket:
