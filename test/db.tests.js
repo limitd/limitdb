@@ -527,4 +527,34 @@ describeForEachConfig((getConfig) => {
       });
     });
   });
+
+  describe('close when is not ready', function() {
+    it('should close the underlying db and call the callback once is ready', (done) => {
+      var ready;
+      var db = new LimitDB(getConfig());
+      db.once('ready', () => ready = true);
+      db.close((err) => {
+        if (err) { return done(err); }
+        assert.isOk(ready);
+        assert.isOk(db._db.isClosed());
+        done();
+      });
+    });
+  });
+
+  describe('close when is closed', function() {
+    var db;
+
+    before(function(done) {
+      db = new LimitDB(getConfig());
+      db.once('ready', () => db.close(done));
+    });
+
+    it('should close the underlying db and call the callback once is ready', (done) => {
+      db.close((err) => {
+        assert.match(err.message, /already closed/);
+        done();
+      });
+    });
+  });
 });
