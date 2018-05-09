@@ -1,5 +1,5 @@
 const tmp = require('tmp');
-const LimitDB  = require('../lib/db');
+const LimitDB  = require('../');
 const MockDate = require('mockdate');
 const assert   = require('chai').assert;
 const async    = require('async');
@@ -555,6 +555,23 @@ describeForEachConfig((getConfig) => {
         assert.match(err.message, /already closed/);
         done();
       });
+    });
+  });
+
+  describe('loadTypes when the database is open', () => {
+    var db;
+
+    before(function(done) {
+      db = new LimitDB(getConfig());
+      db.once('ready', () => {
+        const newTypes = Object.assign({"cc": { per_second: 100 }}, types);
+        db.loadTypes(newTypes);
+        done();
+      });
+    });
+
+    it('should not fail', (done) => {
+      db.take({ type: 'cc', key: '123' }, done);
     });
   });
 });
