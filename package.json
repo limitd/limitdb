@@ -21,6 +21,7 @@
     "lodash": "^4.17.4",
     "lru-cache": "^4.0.2",
     "ms": "^0.7.3",
+    "redisdown": "git://github.com/vhf/redisdown.git#leveldown-4.x",
     "rocksdb": "^2.0.0"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "chai": "^3.5.0",
     "mocha": "^3.2.0",
     "mockdate": "^2.0.1",
+    "redis": "^2.8.0",
     "tmp": "0.0.33"
   }
 }

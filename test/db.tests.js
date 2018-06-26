@@ -5,6 +5,7 @@ const assert   = require('chai').assert;
 const async    = require('async');
 const _        = require('lodash');
 const ms       = require('ms');
+const redis    = require('redis');
 
 const types = {
   ip: {
@@ -38,6 +39,13 @@ const types = {
 };
 
 const configs = {
+  'redisdb': () => {
+    return {
+      driver: 'redisdb',
+      types,
+      inMemory: true
+    }
+  },
   'leveldb': () => {
     return {
       types,
@@ -85,9 +93,20 @@ describeForEachConfig((getConfig) => {
     var db;
 
     before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
+      const config = getConfig();
+      db = new LimitDB(config);
+      db.once('ready', () => {
+        if (config.driver === 'redisdb') {
+          return redis.createClient().flushall(done);
+        }
+
+        return done();
+      });
     });
+
+    after(function(done) {
+      db.close(done);
+    })
 
     it('should fail when type is not provided', (done) => {
       db.take({}, (err) => {
@@ -342,8 +361,19 @@ describeForEachConfig((getConfig) => {
     var db;
 
     before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
+      const config = getConfig();
+      db = new LimitDB(config);
+      db.once('ready', () => {
+        if (config.driver === 'redisdb') {
+          return redis.createClient().flushall(done);
+        }
+
+        return done();
+      });
+    });
+
+    after(function(done) {
+      db.close(done);
     });
 
     it('should restore the bucket when reseting', (done) => {
@@ -413,6 +443,10 @@ describeForEachConfig((getConfig) => {
       db.once('ready', done);
     });
 
+    after(function(done) {
+      db.close(done);
+    });
+
     it('should return a list of buckets matching the prefix', (done) => {
       const now = 1425920267;
       MockDate.set(now * 1000);
@@ -459,6 +493,10 @@ describeForEachConfig((getConfig) => {
       db.once('ready', done);
     });
 
+    after(function(done) {
+      db.close(done);
+    });
+
     it('should work with a simple request', (done) => {
       var now = 1425920267;
       MockDate.set(now * 1000);
@@ -500,14 +538,20 @@ describeForEachConfig((getConfig) => {
   });
 
   describe('isOpen', function() {
-    it('should return false when initializing', function() {
+    it('should return false when initializing', function(done) {
       const db = new LimitDB(getConfig());
       assert.notOk(db.isOpen());
+      db.once('ready', () => {
+        db.close(done);
+      });
     });
 
-    it('should return true when is ready', function() {
+    it('should return true when is ready', function(done) {
       const db = new LimitDB(getConfig());
-      db.once('ready', () => assert.ok(db.isOpen()));
+      db.once('ready', () => {
+        assert.ok(db.isOpen());
+        db.close(done);
+      });
     });
   });
 
@@ -568,6 +612,10 @@ describeForEachConfig((getConfig) => {
         db.loadTypes(newTypes);
         done();
       });
+    });
+
+    after(function(done) {
+      db.close(done);
     });
 
     it('should not fail', (done) => {
