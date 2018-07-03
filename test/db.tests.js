@@ -34,6 +34,10 @@ const types = {
         size: 10
       }
     }
+  },
+  'ip child': {
+    depends_on: 'ip',
+    per_second: 100
   }
 };
 
@@ -333,6 +337,14 @@ describeForEachConfig((getConfig) => {
           assert.notOk(response.conformant);
           done();
         });
+      });
+    });
+
+    it('should work with depends_on', (done) => {
+      db.take({ type: 'ip child', key: '1.1.1.1', count: 20 }, (err, response) => {
+        if (err) { return done(err); }
+        assert.notOk(response.conformant);
+        done();
       });
     });
 
