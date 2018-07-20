@@ -1,13 +1,13 @@
-[![Build Status](https://travis-ci.org/limitd/limitdb.svg?branch=master)](https://travis-ci.org/limitd/limitdb)
+[![Build Status](https://travis-ci.org/limitd/limitdb-redis.svg?branch=master)](https://travis-ci.org/limitd/limitdb)
 
-limitdb is a database for limits on top of leveldb.
+limitdb is client for limits on top of `redis`.
 
 Currently limitdb uses the [Token Bucket Algorithm](https://en.wikipedia.org/wiki/Token_bucket).
 
 ## Installation
 
 ```
-npm i limitdb
+npm i limitdb-redis
 ```
 
 ## Configure

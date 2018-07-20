@@ -1,12 +1,12 @@
-const tmp = require('tmp');
-const LimitDB  = require('../');
-const MockDate = require('mockdate');
-const assert   = require('chai').assert;
+/* eslint-env node, mocha */
+const ms       = require('ms');
 const async    = require('async');
 const _        = require('lodash');
-const ms       = require('ms');
+const MockDate = require('mockdate');
+const LimitDB  = require('../lib/db');
+const assert   = require('chai').assert;
 
-const types = {
+const buckets = {
   ip: {
     size: 10,
     per_second: 5,
@@ -19,7 +19,7 @@ const types = {
         per_second: 50
       },
       '10.0.0.123': {
-        until: new Date(Date.now() - ms('24h')), //yesterday
+        until: new Date(Date.now() - ms('24h') - ms('1m')), //yesterday
         per_second: 50
       },
       '10.0.0.1': {
@@ -37,86 +37,81 @@ const types = {
   }
 };
 
-const configs = {
-  'leveldb': () => {
-    return {
-      types,
-      path: tmp.dirSync().name
-    };
-  },
-  'leveldb (inMemory)': () => {
-    return {
-      types,
-      inMemory: true
-    };
-  },
-  'rocksdb': () => {
-    return {
-      driver: 'rocksdb',
-      types,
-      path: tmp.dirSync().name
-    };
-  }
-};
+describe('LimitDBRedis', () => {
+  let db;
 
-function describeForEachConfig(callback) {
-  Object.keys(configs).forEach(name => {
-    describe(`LimitDB with ${name}`, () => {
-      callback(configs[name]);
+  beforeEach(function(done) {
+    MockDate.reset();
+    db = new LimitDB({ uri: 'localhost', buckets });
+    db.once('error', done);
+    db.once('ready', () => {
+      db.redis.flushall(done);
     });
   });
-}
 
-describeForEachConfig((getConfig) => {
-  it('should throw an error when path is not specified', () => {
-    assert.throws(() => new LimitDB({}), /path is required/);
+  afterEach(function(done) {
+    db.close(done);
   });
 
-  it('should not throw an error when path is not specified and inMemory: true', () => {
-    assert.doesNotThrow(() => new LimitDB({ inMemory: true }), /path is required/);
+  describe('#constructor', () => {
+    it('should throw an when missing redis information', () => {
+      assert.throws(() => new LimitDB({}), /Redis connection information must be specified/);
+    });
+    it('should subscribe to configuration');
+    it('should pull configuration from channel');
+    it('should emit error on failure to connect to redis', (done) => {
+      db = new LimitDB({ uri: 'localhost:test' });
+      db.on('error', () => {
+        done();
+      });
+    });
   });
 
-  afterEach(function () {
-    MockDate.reset();
-  });
+  describe('#validateParms', () => {
+    it('should fail when params are not provided', () => {
+      const err = db.validateParams();
+      assert.match(err.message, /params are required/);
+    });
 
+    it('should fail when type is not provided', () => {
+      const err = db.validateParams({});
+      assert.match(err.message, /type is required/);
+    });
+
+    it('should fail when type is not defined', () => {
+      const err = db.validateParams({ type: 'cc' });
+      assert.match(err.message, /undefined bucket type cc/);
+    });
+
+    it('should fail when key is not provided', () => {
+      const err = db.validateParams({ type: 'ip' }, 'key');
+      assert.match(err.message, /key is required/);
+    });
+
+    it('should fail when prefix is not provided', () => {
+      const err = db.validateParams({ type: 'ip' }, 'prefix');
+      assert.match(err.message, /prefix is required/);
+    });
+  });
 
   describe('TAKE', () => {
-    var db;
-
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
-    });
-
-    it('should fail when type is not provided', (done) => {
+    it('should fail on validation', (done) => {
       db.take({}, (err) => {
         assert.match(err.message, /type is required/);
         done();
       });
     });
 
-    it('should fail when type is not defined', (done) => {
-      db.take({ type: 'cc' }, (err) => {
-        assert.match(err.message, /undefined bucket type cc/);
-        done();
-      });
-    });
-
-    it('should fail when key is not provided', (done) => {
-      db.take({ type: 'ip' }, (err) => {
-        assert.match(err.message, /key is required/);
-        done();
-      });
-    });
-
-
-    it('should work :)', (done) => {
-      const takeParams = { type: 'ip',  key: '21.17.65.41'};
-      db.take(takeParams, (err) => {
-        if (err) return done(err);
-        db.take(takeParams, (err, result) => {
-          if (err) { return done(err); }
+    it('should keep track of a key', (done) => {
+      const params = { type: 'ip',  key: '21.17.65.41'};
+      db.take(params, (err) => {
+        if (err) {
+          return done(err);
+        }
+        db.take(params, (err, result) => {
+          if (err) {
+            return done(err);
+          }
           assert.equal(result.conformant, true);
           assert.equal(result.remaining, 8);
           done();
@@ -124,44 +119,51 @@ describeForEachConfig((getConfig) => {
       });
     });
 
-
-    it('should add a ttl to unused buckets', function (done) {
+    it('should add a ttl to buckets', function (done) {
       const params = { type: 'ip', key: '211.45.66.1'};
       db.take(params, function (err) {
-        if (err) return done(err);
-        setTimeout(function () {
-          db._types[params.type].db.get(params.key, function (err, result) {
-            assert.isUndefined(result);
-            done();
-          });
-        }, 3000);
+        if (err) {
+          return done(err);
+        }
+        db.redis.ttl(`${params.type}:${params.key}`, (err, ttl) => {
+          if (err) {
+            return done(err);
+          }
+          assert.equal(db.buckets['ip'].ttl, ttl);
+          done();
+        });
       });
     });
 
     it('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
-      var now = 1425920267;
+      const now = 1425920267;
       db.take({
         type: 'ip',
         key:  '5.5.5.5'
-      }, function (err) {
-        if (err) return done(err);
+      }, (err) => {
+        if (err) {
+          return done(err);
+        }
         db.put({
           type: 'ip',
           key:  '5.5.5.5',
         }, (err) => {
-          if (err) return done(err);
+          if (err) {
+            return done(err);
+          }
           MockDate.set(now * 1000);
           db.take({
             type: 'ip',
             key:  '5.5.5.5'
           }, function (err, result) {
-            if (err) return done(err);
+            if (err) {
+              return done(err);
+            }
 
             assert.ok(result.conformant);
             assert.equal(result.remaining, 9);
             assert.equal(result.reset, now + 1);
             assert.equal(result.limit, 10);
-
             done();
           });
         });
@@ -259,7 +261,6 @@ describeForEachConfig((getConfig) => {
       });
     });
 
-
     it('can expire an override', (done) => {
       const takeParams = {
         type: 'ip',
@@ -268,7 +269,9 @@ describeForEachConfig((getConfig) => {
       async.each(_.range(10), (i, cb) => {
         db.take(takeParams, cb);
       }, (err) => {
-        if (err) return done(err);
+        if (err) {
+          return done(err);
+        }
         db.take(takeParams, (err, response) => {
           assert.notOk(response.conformant);
           done();
@@ -335,15 +338,25 @@ describeForEachConfig((getConfig) => {
         });
       });
     });
-
   });
 
   describe('PUT', function () {
-    var db;
+    it('should fail on validation', (done) => {
+      db.put({}, (err) => {
+        assert.match(err.message, /type is required/);
+        done();
+      });
+    });
 
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
+    it('should not override on unlimited buckets', (done) => {
+      const bucketKey = { type: 'ip',  key: '0.0.0.0', count: 1000 };
+      db.put(bucketKey, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        assert.equal(result.remaining, 100);
+        done();
+      });
     });
 
     it('should restore the bucket when reseting', (done) => {
@@ -406,11 +419,11 @@ describeForEachConfig((getConfig) => {
   });
 
   describe('STATUS', function () {
-    var db;
-
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
+    it('should fail on validation', (done) => {
+      db.status({}, (err) => {
+        assert.match(err.message, /type is required/);
+        done();
+      });
     });
 
     it('should return a list of buckets matching the prefix', (done) => {
@@ -419,16 +432,22 @@ describeForEachConfig((getConfig) => {
       async.map(_.range(10), (i, done) => {
         db.take({ type: 'ip', key: `some-prefix-${i}` }, done);
       }, (err, results) => {
-        if (err) return done(err);
+        if (err) {
+          return done(err);
+        }
         assert.ok(results.every(r => r.conformant));
         db.status({ type: 'ip', prefix: 'some-prefix' }, (err, result) => {
-          if (err) { return done(err); }
-          assert.equal(result.items.length, 10);
-          for(var i = 0; i < 10; i++) {
-            assert.equal(result.items[i].key, `some-prefix-${i}`);
-            assert.equal(result.items[i].limit, 10);
-            assert.equal(result.items[i].remaining, 9);
-            assert.equal(result.items[i].reset, now + 1);
+          if (err) {
+            return done(err);
+          }
+          const items = _.sortBy(result.items, 'key');
+          assert.equal(items.length, 10);
+
+          for (var i = 0; i < 10; i++) {
+            assert.equal(items[i].key, `some-prefix-${i}`);
+            assert.equal(items[i].limit, 10);
+            assert.equal(items[i].remaining, 9);
+            assert.equal(items[i].reset, now + 1);
           }
           done();
         });
@@ -439,7 +458,7 @@ describeForEachConfig((getConfig) => {
       const now = 1425920267;
       MockDate.set(now * 1000);
 
-      db.take({ type: 'ip', key: `187.213.89.1`, count: 10 }, (err) => {
+      db.take({ type: 'ip', key: '187.213.89.1', count: 10 }, (err) => {
         if (err) { return done(err); }
         MockDate.set((now + 1) * 1000);
         db.status({ type: 'ip', prefix: '187.213.89.1' }, (err, status) => {
@@ -452,13 +471,6 @@ describeForEachConfig((getConfig) => {
   });
 
   describe('WAIT', function () {
-    var db;
-
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
-    });
-
     it('should work with a simple request', (done) => {
       var now = 1425920267;
       MockDate.set(now * 1000);
@@ -496,82 +508,6 @@ describeForEachConfig((getConfig) => {
           done();
         });
       });
-    });
-  });
-
-  describe('isOpen', function() {
-    it('should return false when initializing', function() {
-      const db = new LimitDB(getConfig());
-      assert.notOk(db.isOpen());
-    });
-
-    it('should return true when is ready', function() {
-      const db = new LimitDB(getConfig());
-      db.once('ready', () => assert.ok(db.isOpen()));
-    });
-  });
-
-  describe('close', function() {
-    var db;
-
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', done);
-    });
-
-    it('should close the underlying levelup and call the callback', (done) => {
-      db.close((err) => {
-        if (err) { return done(err); }
-        assert.isOk(db._db.isClosed());
-        done();
-      });
-    });
-  });
-
-  describe('close when is not ready', function() {
-    it('should close the underlying db and call the callback once is ready', (done) => {
-      var ready;
-      var db = new LimitDB(getConfig());
-      db.once('ready', () => ready = true);
-      db.close((err) => {
-        if (err) { return done(err); }
-        assert.isOk(ready);
-        assert.isOk(db._db.isClosed());
-        done();
-      });
-    });
-  });
-
-  describe('close when is closed', function() {
-    var db;
-
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', () => db.close(done));
-    });
-
-    it('should close the underlying db and call the callback once is ready', (done) => {
-      db.close((err) => {
-        assert.match(err.message, /already closed/);
-        done();
-      });
-    });
-  });
-
-  describe('loadTypes when the database is open', () => {
-    var db;
-
-    before(function(done) {
-      db = new LimitDB(getConfig());
-      db.once('ready', () => {
-        const newTypes = Object.assign({"cc": { per_second: 100 }}, types);
-        db.loadTypes(newTypes);
-        done();
-      });
-    });
-
-    it('should not fail', (done) => {
-      db.take({ type: 'cc', key: '123' }, done);
     });
   });
 });
