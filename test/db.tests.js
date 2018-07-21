@@ -45,7 +45,10 @@ describe('LimitDBRedis', () => {
     db = new LimitDB({ uri: 'localhost', buckets });
     db.once('error', done);
     db.once('ready', () => {
-      db.redis.flushall(done);
+      const dbs = db.redis.nodes ? db.redis.nodes('master') : [db.redis];
+      async.each(dbs, (db, cb) => {
+        db.flushall(cb);
+      }, done);
     });
   });
 
@@ -459,10 +462,14 @@ describe('LimitDBRedis', () => {
       MockDate.set(now * 1000);
 
       db.take({ type: 'ip', key: '187.213.89.1', count: 10 }, (err) => {
-        if (err) { return done(err); }
+        if (err) {
+          return done(err);
+        }
         MockDate.set((now + 1) * 1000);
         db.status({ type: 'ip', prefix: '187.213.89.1' }, (err, status) => {
-          if (err) { return done(err); }
+          if (err) {
+            return done(err);
+          }
           assert.equal(status.items[0].remaining, 5);
           done();
         });
