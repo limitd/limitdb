@@ -115,14 +115,4 @@ describe('LimitdRedis', () => {
       client.reset('test', 'test', 1, done);
     });
   });
-
-  describe('#status', () => {
-    it('should call #db.status', (done) => {
-      client.db.status = (params, cb) => {
-        cb();
-      };
-
-      client.status('test', 'test', done);
-    });
-  });
 });

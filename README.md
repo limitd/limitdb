@@ -1,24 +1,29 @@
-[![Build Status](https://travis-ci.org/limitd/limitdb-redis.svg?branch=master)](https://travis-ci.org/limitd/limitdb)
+[![Build Status](https://travis-ci.org/elbuo8/limitd-redis.svg?branch=master)](https://travis-ci.org/elbuo8/limitd-redis)
 
-limitdb is client for limits on top of `redis`.
-
-Currently limitdb uses the [Token Bucket Algorithm](https://en.wikipedia.org/wiki/Token_bucket).
+`limitd-redis` is client for limits on top of `redis` using [Token Buckets](https://en.wikipedia.org/wiki/Token_bucket).
+It's a fork from [LimitDB](https://github.com/limitd/limitdb).
 
 ## Installation
 
 ```
-npm i limitdb-redis
+npm i limitd-redis
 ```
 
 ## Configure
 
-Create an instance of Limitdb as follows:
+Create an instance of `limitd-redis` as follows:
 
 ```javascript
-const Limitdb = require('limitdb');
-const limitdb = new Limitdb({
-  path: '/tmp/limitdb',
-  types: {
+const Limitd = require('limitd-redis');
+
+const limitd = new Limitd({
+  uri: 'localhost',
+  //or
+  nodes: [{
+    port: 7000,
+    host: 'localhost'
+  }],
+  buckets: {
     ip: {
       size: 10,
       per_second: 5
@@ -29,11 +34,11 @@ const limitdb = new Limitdb({
 
 Options available:
 
-- `path` (string): a path for the leveldb database.
-- `inMemory` (boolean): set this to true to run the entire database in memory.
-- `types` (object): setup your bucket types.
+- `uri` (string): Redis Connection String.
+- `nodes` (array): [Redis Cluster Configuration](https://github.com/luin/ioredis#cluster).
+- `buckets` (object): setup your bucket types.
 
-The type defines the characteristics of a the bucket:
+Buckets:
 
 - `size` is the maximun content of the bucket. This is the maximun burst you allow.
 - `per_interval` is the amount of tokens that the bucket receive on every interval.
@@ -48,22 +53,18 @@ If you don't specify a filling rate with `per_interval` or any other `per_x`, th
 You can also define `overrides` inside your type definitions as follows:
 
 ```javascript
-const Limitdb = require('limitdb');
-const limitdb = new Limitdb({
-  path: '/tmp/limitdb',
-  types: {
-    ip: {
-      size: 10,
-      per_second: 5,
-      overrides: {
-        '127.0.0.1': {
-          size: 100,
-          per_second: 50
-        }
+buckets = {
+  ip: {
+    size: 10,
+    per_second: 5,
+    overrides: {
+      '127.0.0.1': {
+        size: 100,
+        per_second: 50
       }
     }
   }
-});
+}
 ```
 
 In this case the specific bucket for `127.0.0.1` of type `ip` will have a greater limit.
@@ -80,8 +81,7 @@ overrides: {
 }
 ```
 
-and also it is possible to configure expiration of overrides:
-
+It's possible to configure expiration of overrides:
 
 ```
 overrides: {
@@ -93,16 +93,20 @@ overrides: {
 }
 ```
 
+## Breaking changes from `Limitdb`
+
+* The `status` method is not supported by this client.
+* Elements will have a default TTL of a week unless specified otherwise.
 
 ## TAKE
 
-```javascript
-limitdb.take({ type: 'ip', key: '54.21.23.12' }, (err, result) => {
+```js
+limitd.take({ type: 'ip', key: '54.21.23.12' }, (err, result) => {
   console.dir(result);
 });
 ```
 
-`limitdb.take` takes as argument an object with:
+`limitd.take` takes as argument an object with:
 
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
@@ -119,35 +123,15 @@ The result object has:
 
 You can manually reset a fill a bucket using PUT:
 
-```javascript
-limitdb.put({ type: 'ip', key: '54.21.23.12' }, err => {});
+```js
+limitd.put({ type: 'ip', key: '54.21.23.12' }, err => {});
 ```
 
-`limitdb.put` takes as argument an object with:
+`limitd.put` takes as argument an object with:
 
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
 -  `count`: the amount of tokens you want to put in the bucket. This is optional and the default is the size of the bucket.
-
-## STATUS
-
-```javascript
-limitdb.status({ type: 'ip', prefix: '54' }, (err, result) => {
-  console.dir(result.items);
-});
-```
-
-`limitdb.status` takes as argument an object with
-
--  `type`: the bucket type.
--  `prefix`: a prefix of buckets to search.
-
-The result object has:
-
--  `items`: an array of buckets with:
-  - `key`: the key of the bucket.
-  - `size`: the size of the bucket.
-  - `reset`: the reset time.
 
 ## Author
 
