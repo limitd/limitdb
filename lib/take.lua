@@ -5,7 +5,7 @@ local new_content          = tonumber(ARGV[3])
 local tokens_to_take       = tonumber(ARGV[4])
 local ttl                  = tonumber(ARGV[5])
 
-local current = redis.pcall('HMGET', KEYS[1], 'last_drip', 'content')
+local current = redis.pcall('HMGET', KEYS[1], 'd', 'r')
 
 if current.err ~= nil then
     current = {}
@@ -30,8 +30,8 @@ if enough_tokens then
 end
 
 redis.call('HMSET', KEYS[1],
-            'last_drip', current_timestamp_ms,
-            'content', new_content)
+            'd', current_timestamp_ms,
+            'r', new_content)
 redis.call('EXPIRE', KEYS[1], ttl)
 
 return { current_timestamp_ms, new_content, enough_tokens }
