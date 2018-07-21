@@ -3,7 +3,7 @@ local matches = {}
 local cursor = 0
 
 repeat
-  local results = redis.call('SCAN', cursor, 'MATCH', prefix)
+  local results = redis.call('SCAN', cursor, 'MATCH', prefix, 'COUNT', 100)
   cursor = tonumber(results[1])
   local keys = results[2]
   for idx = 1, #keys do
