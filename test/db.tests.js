@@ -42,7 +42,7 @@ describe('LimitDBRedis', () => {
 
   beforeEach(function(done) {
     MockDate.reset();
-    db = new LimitDB({ uri: 'localhost', buckets });
+    db = new LimitDB({ uri: 'localhost', buckets, prefix: 'tests:' });
     db.once('error', done);
     db.once('ready', () => {
       const dbs = db.redis.nodes ? db.redis.nodes('master') : [db.redis];
@@ -53,19 +53,27 @@ describe('LimitDBRedis', () => {
   });
 
   afterEach(function(done) {
-    db.close(done);
+    db.close((err) => {
+      // Can't close DB if it was never open
+      if (err && err.message.indexOf('enableOfflineQueue') > 0) {
+        err = undefined;
+      }
+      done(err);
+    });
   });
 
   describe('#constructor', () => {
     it('should throw an when missing redis information', () => {
       assert.throws(() => new LimitDB({}), /Redis connection information must be specified/);
     });
-    it('should subscribe to configuration');
-    it('should pull configuration from channel');
     it('should emit error on failure to connect to redis', (done) => {
-      db = new LimitDB({ uri: 'localhost:test' });
+      let called = false;
+      db = new LimitDB({ uri: 'localhost:test', buckets: {} });
       db.on('error', () => {
-        done();
+        if (!called) {
+          called = true;
+          return done();
+        }
       });
     });
   });
@@ -409,68 +417,27 @@ describe('LimitDBRedis', () => {
     });
 
     it('should work for a fixed bucket', (done) => {
-      db.take({ type: 'ip', key: '8.8.8.8' }, function (err, result) {
+      db.take({ type: 'ip', key: '8.8.8.8' }, (err, result) => {
         assert.ok(result.conformant);
-        db.put({ type: 'ip', key: '8.8.8.8' }, function (err, result) {
+        db.put({ type: 'ip', key: '8.8.8.8' }, (err, result) => {
           if (err) return done(err);
           assert.equal(result.remaining, 10);
-          // assert.isUndefined(result.reset);
-          done();
-        });
-      });
-    });
-  });
-
-  describe('STATUS', function () {
-    it('should fail on validation', (done) => {
-      db.status({}, (err) => {
-        assert.match(err.message, /type is required/);
-        done();
-      });
-    });
-
-    it('should return a list of buckets matching the prefix', (done) => {
-      const now = 1425920267;
-      MockDate.set(now * 1000);
-      async.map(_.range(10), (i, done) => {
-        db.take({ type: 'ip', key: `some-prefix-${i}` }, done);
-      }, (err, results) => {
-        if (err) {
-          return done(err);
-        }
-        assert.ok(results.every(r => r.conformant));
-        db.status({ type: 'ip', prefix: 'some-prefix' }, (err, result) => {
-          if (err) {
-            return done(err);
-          }
-          const items = _.sortBy(result.items, 'key');
-          assert.equal(items.length, 10);
-
-          for (var i = 0; i < 10; i++) {
-            assert.equal(items[i].key, `some-prefix-${i}`);
-            assert.equal(items[i].limit, 10);
-            assert.equal(items[i].remaining, 9);
-            assert.equal(items[i].reset, now + 1);
-          }
           done();
         });
       });
     });
 
-    it('should drip on status', (done) => {
-      const now = 1425920267;
-      MockDate.set(now * 1000);
-
-      db.take({ type: 'ip', key: '187.213.89.1', count: 10 }, (err) => {
+    it('should work with negative values', (done) => {
+      db.put({ type: 'ip', key: '8.8.8.1', count: -100 }, (err) => {
         if (err) {
           return done(err);
         }
-        MockDate.set((now + 1) * 1000);
-        db.status({ type: 'ip', prefix: '187.213.89.1' }, (err, status) => {
+        db.take({ type: 'ip', key: '8.8.8.1' }, (err, result) => {
           if (err) {
             return done(err);
           }
-          assert.equal(status.items[0].remaining, 5);
+          assert.equal(result.conformant, false);
+          assert.closeTo(result.remaining, -99, 1);
           done();
         });
       });

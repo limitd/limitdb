@@ -6,7 +6,7 @@ const LimitRedis = require('../lib/client');
 describe('LimitdRedis', () => {
   let client;
   beforeEach((done) => {
-    client = new LimitRedis({ uri: 'localhost', buckets: {} });
+    client = new LimitRedis({ uri: 'localhost', buckets: {}, prefix: 'tests:' });
     client.on('error', done);
     client.on('ready', done);
   });
@@ -14,7 +14,7 @@ describe('LimitdRedis', () => {
   describe('#constructor', () => {
     it('should call error if db fails', (done) => {
       let called = false; // avoid uncaught
-      client = new LimitRedis({ uri: 'localhost:fail' });
+      client = new LimitRedis({ uri: 'localhost:fail', buckets: {} });
       client.on('error', () => {
         if (!called) {
           called = true;
