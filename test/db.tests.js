@@ -105,6 +105,19 @@ describe('LimitDBRedis', () => {
     });
   });
 
+  describe('#configurateBucketKey', () => {
+    it('should add new bucket to existing configuration', () => {
+      db.configurateBucket('test', { size: 5 });
+      assert.containsAllKeys(db.buckets, ['ip', 'test']);
+    });
+
+    it('should replace configuration of existing type',  () => {
+      db.configurateBucket('ip', { size: 1 });
+      assert.equal(db.buckets.ip.size, 1);
+      assert.equal(db.buckets.ip.overrides.length, 0);
+    });
+  });
+
   describe('TAKE', () => {
     it('should fail on validation', (done) => {
       db.take({}, (err) => {
