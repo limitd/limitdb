@@ -13,7 +13,7 @@ npm i limitd-redis
 
 Create an instance of `limitd-redis` as follows:
 
-```javascript
+```js
 const Limitd = require('limitd-redis');
 
 const limitd = new Limitd({
@@ -28,7 +28,8 @@ const limitd = new Limitd({
       size: 10,
       per_second: 5
     }
-  }
+  },
+  prefix: 'test:'
 });
 ```
 
@@ -36,7 +37,8 @@ Options available:
 
 - `uri` (string): Redis Connection String.
 - `nodes` (array): [Redis Cluster Configuration](https://github.com/luin/ioredis#cluster).
-- `buckets` (object): setup your bucket types.
+- `buckets` (object): Setup your bucket types.
+- `prefix` (string): Prefix keys in Redis.
 
 Buckets:
 

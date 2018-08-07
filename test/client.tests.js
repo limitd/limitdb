@@ -2,6 +2,7 @@
 const _ = require('lodash');
 const assert = require('chai').assert;
 const LimitRedis = require('../lib/client');
+const ValidationError = LimitRedis.ValidationError;
 
 describe('LimitdRedis', () => {
   let client;
@@ -22,11 +23,27 @@ describe('LimitdRedis', () => {
         }
       });
     });
-    it('should set up retry and circuitbreaker', () => {
+    it('should set up retry and circuitbreaker defaults', () => {
       assert.equal(client.retryOpts.retries, 1);
       assert.equal(client.retryOpts.minTimeout, 200);
       assert.equal(client.retryOpts.maxTimeout, 800);
+      assert.equal(client.breakerOpts.timeout, '0.5s');
+      assert.equal(client.breakerOpts.maxFailures, 5);
+      assert.equal(client.breakerOpts.cooldown, '1s');
+      assert.equal(client.breakerOpts.maxCooldown, '10s');
+      assert.equal(client.breakerOpts.name, 'limitd.redis');
     });
+
+    it('should accept circuitbreaker parameters', () => {
+      client = new LimitRedis({ uri: 'localhost', buckets: {}, circuitbreaker: { onTrip: () => {} } });
+      assert.ok(client.breakerOpts.onTrip);
+    });
+
+    it('should accept retry parameters', () => {
+      client = new LimitRedis({ uri: 'localhost', buckets: {}, retry: { retries: 5 } });
+      assert.equa;(client.retryOpts.retries, 5);
+    });
+
   });
 
   describe('#handler', () => {
@@ -49,6 +66,22 @@ describe('LimitdRedis', () => {
         cb();
       };
       client.handler('take', 'test', 'test', done);
+    });
+    it('should not retry or circuitbreak on ValidationError', (done) => {
+      client.db.take = (params, cb) => {
+        return cb(new ValidationError('invalid config'));
+      };
+      client.handler('take', 'invalid', 'test', _.noop);
+      client.handler('take', 'invalid', 'test', _.noop);
+      client.handler('take', 'invalid', 'test', _.noop);
+      client.handler('take', 'invalid', 'test', _.noop);
+      client.handler('take', 'invalid', 'test', _.noop);
+      client.handler('take', 'invalid', 'test', _.noop);
+      client.handler('take', 'invalid', 'test', (err) => {
+        assert.notEqual(err.message, 'limitd.redis: the circuit-breaker is open');
+        assert.equal(err.message, 'invalid config');
+        done();
+      });
     });
     it('should retry', (done) => {
       let calls = 0;
