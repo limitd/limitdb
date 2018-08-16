@@ -1,4 +1,5 @@
 /* eslint-env node, mocha */
+/*eslint no-useless-escape: "disable"*/
 const ms       = require('ms');
 const async    = require('async');
 const _        = require('lodash');
@@ -15,7 +16,7 @@ const buckets = {
         per_second: 100
       },
       'local-lan': {
-        match: /192\.168\./,
+        match: '192\.168\.',
         per_second: 50
       },
       '10.0.0.123': {
@@ -31,6 +32,16 @@ const buckets = {
         unlimited: true
       },
       '8.8.8.8': {
+        size: 10
+      }
+    }
+  },
+  user: {
+    size: 1,
+    per_second: 5,
+    overrides: {
+      'regexp': {
+        match: '^regexp\|',
         size: 10
       }
     }
@@ -266,7 +277,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should return TRUE if an override by regex allows more', (done) => {
+    it('should return TRUE if an override allows more', (done) => {
       const takeParams = {
         type:  'ip',
         key:   '192.168.0.1'
@@ -360,6 +371,18 @@ describe('LimitDBRedis', () => {
           assert.notOk(response.conformant);
           done();
         });
+      });
+    });
+
+    it('should work with RegExp', (done) => {
+      db.take({ type: 'user', key: 'regexp|test'}, (err, response) => {
+        if (err) {
+          return done(err);
+        }
+        assert.ok(response.conformant);
+        assert.equal(response.remaining, 9);
+        assert.equal(response.limit, 10);
+        done();
       });
     });
   });
