@@ -77,6 +77,9 @@ describe('LimitDBRedis', () => {
     it('should throw an when missing redis information', () => {
       assert.throws(() => new LimitDB({}), /Redis connection information must be specified/);
     });
+    it('should throw an when missing bucket configuration', () => {
+      assert.throws(() => new LimitDB({ uri: 'localhost:test' }), /Buckets must be specified for Limitd/);
+    });
     it('should emit error on failure to connect to redis', (done) => {
       let called = false;
       db = new LimitDB({ uri: 'localhost:test', buckets: {} });
