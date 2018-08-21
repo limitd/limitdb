@@ -34,4 +34,4 @@ redis.call('HMSET', KEYS[1],
             'r', new_content)
 redis.call('EXPIRE', KEYS[1], ttl)
 
-return { current_timestamp_ms, new_content, enough_tokens }
+return { new_content, enough_tokens }
