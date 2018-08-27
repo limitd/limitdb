@@ -398,6 +398,22 @@ describe('LimitDBRedis', () => {
       });
     });
 
+    it('should add to the bucket', (done) => {
+      db.take({ type: 'ip', key: '8.8.8.8', count: 5 }, (err) => {
+        if (err) {
+          return cb(err);
+        }
+
+        db.put({ type: 'ip', key: '8.8.8.8', count: 4 }, (err, result) => {
+          if (err) {
+            return done(err);
+          }
+          assert.equal(result.remaining, 9);
+          done();
+        });
+      });
+    });
+
     it('should not override on unlimited buckets', (done) => {
       const bucketKey = { type: 'ip',  key: '0.0.0.0', count: 1000 };
       db.put(bucketKey, (err, result) => {
@@ -428,7 +444,7 @@ describe('LimitDBRedis', () => {
       const takeParams = { type: 'ip',  key: '21.17.65.41', count: 9 };
       db.take(takeParams, (err) => {
         if (err) return done(err);
-        db.put({ type: 'ip',  key: '21.17.65.41', count: 1, all: true }, (err) => {
+        db.put({ type: 'ip', key: '21.17.65.41', all: true }, (err) => {
           if (err) return done(err);
           db.take(takeParams, function (err, response) {
             if (err) return done(err);
