@@ -162,6 +162,13 @@ describe('LimitdRedis', () => {
     });
   });
 
+  describe('#resetAll', () => {
+    it('should call db.resetAll', (done) => {
+      client.db.resetAll = (cb) => cb();
+      client.resetAll(done);
+    });
+  });
+
   describe('#close', () => {
     it('should call db.close', (done) => {
       client.db.close = (cb) => cb();
