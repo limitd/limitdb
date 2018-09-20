@@ -168,4 +168,15 @@ describe('LimitdRedis', () => {
       client.resetAll(done);
     });
   });
+
+  describe('#close', () => {
+    it('should call db.close', (done) => {
+      client.db.close = (cb) => cb();
+      client.close((err) => {
+        assert.equal(client.db.listenerCount('error'), 0);
+        assert.equal(client.db.listenerCount('ready'), 0);
+        done(err);
+      });
+    });
+  });
 });
