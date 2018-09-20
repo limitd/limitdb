@@ -161,4 +161,11 @@ describe('LimitdRedis', () => {
       client.reset('test', 'test', 1, done);
     });
   });
+
+  describe('#resetAll', () => {
+    it('should call db.resetAll', (done) => {
+      client.db.resetAll = (cb) => cb();
+      client.resetAll(done);
+    });
+  });
 });

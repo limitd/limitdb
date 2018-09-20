@@ -1,5 +1,4 @@
 /* eslint-env node, mocha */
-/*eslint no-useless-escape: "disable"*/
 const ms       = require('ms');
 const async    = require('async');
 const _        = require('lodash');
@@ -16,7 +15,7 @@ const buckets = {
         per_second: 100
       },
       'local-lan': {
-        match: '192\.168\.',
+        match: '192\\.168\\.',
         per_second: 50
       },
       '10.0.0.123': {
@@ -41,7 +40,7 @@ const buckets = {
     per_second: 5,
     overrides: {
       'regexp': {
-        match: '^regexp\|',
+        match: '^regexp',
         size: 10
       }
     }
@@ -56,10 +55,7 @@ describe('LimitDBRedis', () => {
     db = new LimitDB({ uri: 'localhost', buckets, prefix: 'tests:' });
     db.once('error', done);
     db.once('ready', () => {
-      const dbs = db.redis.nodes ? db.redis.nodes('master') : [db.redis];
-      async.each(dbs, (db, cb) => {
-        db.flushall(cb);
-      }, done);
+      db.resetAll(done);
     });
   });
 
@@ -401,7 +397,7 @@ describe('LimitDBRedis', () => {
     it('should add to the bucket', (done) => {
       db.take({ type: 'ip', key: '8.8.8.8', count: 5 }, (err) => {
         if (err) {
-          return cb(err);
+          return done(err);
         }
 
         db.put({ type: 'ip', key: '8.8.8.8', count: 4 }, (err, result) => {
@@ -535,6 +531,44 @@ describe('LimitDBRedis', () => {
           assert.ok(response.delayed);
           assert.closeTo(waited, 600, 20);
           done();
+        });
+      });
+    });
+  });
+
+  describe('#resetAll', function () {
+    it('should reset all keys of all buckets', (done) => {
+      async.parallel([
+        // Empty those buckets...
+        (cb) => db.take({ type: 'ip', key: '1.1.1.1', count: buckets.ip.size }, cb),
+        (cb) => db.take({ type: 'ip', key: '2.2.2.2', count: buckets.ip.size }, cb),
+        (cb) => db.take({ type: 'user', key: 'some_user', count: buckets.user.size }, cb)
+      ], (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        db.resetAll((err) => {
+          if (err) {
+            return done(err);
+          }
+          async.parallel([
+            (cb) => db.take({ type: 'ip', key: '1.1.1.1' }, cb),
+            (cb) => db.take({ type: 'ip', key: '2.2.2.2' }, cb),
+            (cb) => db.take({ type: 'user', key: 'some_user' }, cb)
+          ], (err, results) => {
+            if (err) {
+              return done(err);
+            }
+
+            assert.equal(results[0].remaining, buckets.ip.size - 1);
+            assert.equal(results[0].conformant, true);
+            assert.equal(results[1].remaining, buckets.ip.size - 1);
+            assert.equal(results[0].conformant, true);
+            assert.equal(results[2].remaining, buckets.user.size - 1);
+            assert.equal(results[2].conformant, true);
+            done();
+          });
         });
       });
     });
