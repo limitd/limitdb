@@ -2,7 +2,6 @@
 const ms       = require('ms');
 const async    = require('async');
 const _        = require('lodash');
-const MockDate = require('mockdate');
 const LimitDB  = require('../lib/db');
 const assert   = require('chai').assert;
 
@@ -51,7 +50,6 @@ describe('LimitDBRedis', () => {
   let db;
 
   beforeEach(function(done) {
-    MockDate.reset();
     db = new LimitDB({ uri: 'localhost', buckets, prefix: 'tests:' });
     db.once('error', done);
     db.once('ready', () => {
@@ -170,7 +168,7 @@ describe('LimitDBRedis', () => {
     });
 
     it('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
-      const now = 1425920267;
+      const now = Date.now();
       db.take({
         type: 'ip',
         key:  '5.5.5.5'
@@ -185,7 +183,6 @@ describe('LimitDBRedis', () => {
           if (err) {
             return done(err);
           }
-          MockDate.set(now * 1000);
           db.take({
             type: 'ip',
             key:  '5.5.5.5'
@@ -196,7 +193,7 @@ describe('LimitDBRedis', () => {
 
             assert.ok(result.conformant);
             assert.equal(result.remaining, 9);
-            assert.equal(result.reset, now + 1);
+            assert.closeTo(result.reset, now / 1000, 3);
             assert.equal(result.limit, 10);
             done();
           });
@@ -205,8 +202,7 @@ describe('LimitDBRedis', () => {
     });
 
     it('should return TRUE when traffic is conformant', (done) => {
-      var now = 1425920267;
-      MockDate.set(now * 1000);
+      const now = Date.now();
       db.take({
         type: 'ip',
         key:  '1.1.1.1'
@@ -214,15 +210,14 @@ describe('LimitDBRedis', () => {
         if (err) return done(err);
         assert.ok(result.conformant);
         assert.equal(result.remaining, 9);
-        assert.equal(result.reset, now + 1);
+        assert.closeTo(result.reset, now / 1000, 3);
         assert.equal(result.limit, 10);
         done();
       });
     });
 
     it('should return FALSE when requesting more than the size of the bucket', (done) => {
-      var now = 1425920267;
-      MockDate.set(now * 1000);
+      const now = Date.now();
       db.take({
         type:  'ip',
         key:   '2.2.2.2',
@@ -231,7 +226,7 @@ describe('LimitDBRedis', () => {
         if (err) return done(err);
         assert.notOk(result.conformant);
         assert.equal(result.remaining, 10);
-        assert.equal(result.reset, now);
+        assert.closeTo(result.reset, now / 1000, 3);
         assert.equal(result.limit, 10);
         done();
       });
@@ -242,8 +237,6 @@ describe('LimitDBRedis', () => {
         type:  'ip',
         key:   '3.3.3.3'
       };
-      const now = 1425920267;
-      MockDate.set(now * 1000);
       async.map(_.range(10), (i, done) => {
         db.take(takeParams, done);
       }, (err, responses) => {
@@ -262,8 +255,6 @@ describe('LimitDBRedis', () => {
         type:  'ip',
         key:   '127.0.0.1'
       };
-      const now = 1425920267;
-      MockDate.set(now * 1000);
       async.each(_.range(10), (i, done) => {
         db.take(takeParams, done);
       }, (err) => {
@@ -281,8 +272,6 @@ describe('LimitDBRedis', () => {
         type:  'ip',
         key:   '192.168.0.1'
       };
-      const now = 1425920267;
-      MockDate.set(now * 1000);
       async.each(_.range(10), (i, done) => {
         db.take(takeParams, done);
       }, (err) => {
@@ -315,8 +304,7 @@ describe('LimitDBRedis', () => {
 
     it('should use seconds ceiling for next reset', (done) => {
       // it takes ~1790 msec to fill the bucket with this test
-      const now = 1425920267;
-      MockDate.set(now * 1000);
+      const now = Date.now();
       const requests = _.range(9).map(() => {
         return cb => db.take({ type: 'ip', key: '211.123.12.36' }, cb);
       });
@@ -325,33 +313,31 @@ describe('LimitDBRedis', () => {
         var lastResult = results[results.length -1];
         assert.ok(lastResult.conformant);
         assert.equal(lastResult.remaining, 1);
-        assert.equal(lastResult.reset, now + 2);
+        assert.closeTo(lastResult.reset, now / 1000, 3);
         assert.equal(lastResult.limit, 10);
         done();
       });
     });
 
     it('should set reset to UNIX timestamp regardless of period', function(done){
-      var now = 1425920267;
-      MockDate.set(now * 1000);
+      const now = Date.now();
       db.take({ type: 'ip', key: '10.0.0.1' }, (err, result) => {
         if (err) { return done(err); }
         assert.ok(result.conformant);
         assert.equal(result.remaining, 0);
-        assert.equal(result.reset, now + 1800);
+        assert.closeTo(result.reset, now / 1000 + 1800, 1);
         assert.equal(result.limit, 1);
         done();
       });
     });
 
     it('should work for unlimited', (done) => {
-      var now = 1425920267;
-      MockDate.set(now * 1000);
+      const now = Date.now();
       db.take({ type: 'ip', key: '0.0.0.0' }, (err, response) => {
         if (err) return done(err);
         assert.ok(response.conformant);
         assert.equal(response.remaining, 100);
-        assert.equal(response.reset, now);
+        assert.closeTo(response.reset, now / 1000, 1);
         assert.equal(response.limit, 100);
         done();
       });
@@ -497,17 +483,13 @@ describe('LimitDBRedis', () => {
 
   describe('WAIT', function () {
     it('should work with a simple request', (done) => {
-      var now = 1425920267;
-      MockDate.set(now * 1000);
+      const now = Date.now();
       db.wait({ type: 'ip', key: '211.76.23.4' }, (err, response) => {
         if (err) return done(err);
         assert.ok(response.conformant);
         assert.notOk(response.delayed);
-
-
         assert.equal(response.remaining, 9);
-        assert.equal(response.reset, now + 1);
-
+        assert.closeTo(response.reset, now / 1000, 3);
         done();
       });
     });

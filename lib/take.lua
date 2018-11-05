@@ -1,9 +1,11 @@
-local current_timestamp_ms = tonumber(ARGV[1])
-local tokens_per_ms        = tonumber(ARGV[2])
-local bucket_size          = tonumber(ARGV[3])
-local new_content          = tonumber(ARGV[3])
-local tokens_to_take       = tonumber(ARGV[4])
-local ttl                  = tonumber(ARGV[5])
+local tokens_per_ms        = tonumber(ARGV[1])
+local bucket_size          = tonumber(ARGV[2])
+local new_content          = tonumber(ARGV[2])
+local tokens_to_take       = tonumber(ARGV[3])
+local ttl                  = tonumber(ARGV[4])
+
+local current_time = redis.call('TIME')
+local current_timestamp_ms = current_time[1] * 1000 + current_time[2] / 1000
 
 local current = redis.pcall('HMGET', KEYS[1], 'd', 'r')
 
@@ -34,4 +36,4 @@ redis.call('HMSET', KEYS[1],
             'r', new_content)
 redis.call('EXPIRE', KEYS[1], ttl)
 
-return { new_content, enough_tokens }
+return { new_content, enough_tokens, current_timestamp_ms }
