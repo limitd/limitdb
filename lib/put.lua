@@ -11,6 +11,7 @@ if current[1] then
   tokens_to_add = math.min(current[1] + tokens_to_add, bucket_size)
 end
 
+redis.replicate_commands()
 if tokens_to_add < bucket_size then
   redis.call('HMSET', KEYS[1],
             'd', current_timestamp_ms,

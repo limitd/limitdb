@@ -31,6 +31,9 @@ if enough_tokens then
     new_content = math.min(new_content - tokens_to_take, bucket_size)
 end
 
+-- https://redis.io/commands/EVAL#replicating-commands-instead-of-scripts
+redis.replicate_commands()
+
 redis.call('HMSET', KEYS[1],
             'd', current_timestamp_ms,
             'r', new_content)
