@@ -21,6 +21,10 @@ const buckets = {
         until: new Date(Date.now() - ms('24h') - ms('1m')), //yesterday
         per_second: 50
       },
+      '10.0.0.124': {
+        until: Date.now() - ms('24h') - ms('1m'), //yesterday
+        per_second: 50
+      },
       '10.0.0.1': {
         size: 1,
         per_hour: 2
@@ -260,6 +264,7 @@ describe('LimitDBRedis', () => {
       }, (err) => {
         if (err) return done(err);
         db.take(takeParams, function (err, result) {
+          if (err) return done(err);
           assert.ok(result.conformant);
           assert.ok(result.remaining, 89);
           done();
@@ -288,6 +293,24 @@ describe('LimitDBRedis', () => {
       const takeParams = {
         type: 'ip',
         key:  '10.0.0.123'
+      };
+      async.each(_.range(10), (i, cb) => {
+        db.take(takeParams, cb);
+      }, (err) => {
+        if (err) {
+          return done(err);
+        }
+        db.take(takeParams, (err, response) => {
+          assert.notOk(response.conformant);
+          done();
+        });
+      });
+    });
+
+    it('can parse a data and expire and override', (done) => {
+      const takeParams = {
+        type: 'ip',
+        key:  '10.0.0.124'
       };
       async.each(_.range(10), (i, cb) => {
         db.take(takeParams, cb);
