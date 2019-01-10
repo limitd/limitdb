@@ -307,7 +307,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('can parse a data and expire and override', (done) => {
+    it('can parse a date and expire and override', (done) => {
       const takeParams = {
         type: 'ip',
         key:  '10.0.0.124'
