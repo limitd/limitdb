@@ -34,6 +34,10 @@ const types = {
         size: 10
       }
     }
+  },
+  ttl_test: {
+    size: 10,
+    ttl: 100
   }
 };
 
@@ -135,6 +139,19 @@ describeForEachConfig((getConfig) => {
             done();
           });
         }, 3000);
+      });
+    });
+
+    it('should support specifying a ttl in the bucket configuration', function (done) {
+      const params = { type: 'ttl_test', key: '211.45.66.1'};
+      db.take(params, function (err) {
+        if (err) return done(err);
+        setTimeout(function () {
+          db._types[params.type].db.get(params.key, function (err, result) {
+            assert.isUndefined(result);
+            done();
+          });
+        }, 300);
       });
     });
 
