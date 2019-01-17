@@ -422,6 +422,46 @@ describeForEachConfig((getConfig) => {
     });
   });
 
+  describe('GET', function () {
+    var db;
+
+    before(function(done) {
+      db = new LimitDB(getConfig());
+      db.once('ready', done);
+    });
+
+    it('should get the current value of the key', (done) => {
+      const bucketKey = { type: 'ip',  key: '211.123.12.12'};
+      let reset;
+      db.get(bucketKey, (err, res) => {
+        if (err) return done(err);
+        assert.equal(res.remaining, 10);
+        assert.equal(res.limit, 10);
+        reset = res.reset;
+
+        db.take(bucketKey, (err) => {
+          if (err) return done(err);
+
+          db.get(bucketKey, (err, res) => {
+            if (err) return done(err);
+            assert.equal(res.remaining, 9);
+            assert.equal(res.reset, reset);
+            assert.equal(res.limit, 10);
+
+            // Double check to make sure the value doesn't change.
+            db.get(bucketKey, (err, res) => {
+              if (err) return done(err);
+              assert.equal(res.remaining, 9);
+              assert.equal(res.reset, reset);
+              assert.equal(res.limit, 10);
+              return done();
+            });
+          });
+        });
+      });
+    });
+  });
+
   describe('STATUS', function () {
     var db;
 
