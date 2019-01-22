@@ -432,12 +432,10 @@ describeForEachConfig((getConfig) => {
 
     it('should get the current value of the key', (done) => {
       const bucketKey = { type: 'ip',  key: '211.123.12.12'};
-      var reset;
       db.get(bucketKey, (err, res) => {
         if (err) return done(err);
         assert.equal(res.remaining, 10);
         assert.equal(res.limit, 10);
-        reset = res.reset;
 
         db.take(bucketKey, (err) => {
           if (err) return done(err);
@@ -445,14 +443,12 @@ describeForEachConfig((getConfig) => {
           db.get(bucketKey, (err, res) => {
             if (err) return done(err);
             assert.equal(res.remaining, 9);
-            assert.equal(res.reset, reset);
             assert.equal(res.limit, 10);
 
             // Double check to make sure the value doesn't change.
             db.get(bucketKey, (err, res) => {
               if (err) return done(err);
               assert.equal(res.remaining, 9);
-              assert.equal(res.reset, reset);
               assert.equal(res.limit, 10);
               return done();
             });
