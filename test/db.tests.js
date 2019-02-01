@@ -544,6 +544,30 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
+    it('should return the bucket for an unlimited key', (done) => {
+      db.get({type: 'ip', key: '0.0.0.0'}, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        assert.equal(result.remaining, 100);
+
+        db.take({ type: 'ip', key: '0.0.0.0', count: 1 }, (err) => {
+          if (err) {
+            return done(err);
+          }
+          db.get({type: 'ip', key: '0.0.0.0'}, (err, result) => {
+            if (err) {
+              return done(err);
+            }
+            assert.equal(result.remaining, 100);
+            assert.equal(result.limit, 100);
+            assert.exists(result.reset);
+            done();
+          });
+        });
+      });
+    });
   });
 
   describe('WAIT', function () {
