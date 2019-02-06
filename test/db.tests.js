@@ -504,6 +504,72 @@ describe('LimitDBRedis', () => {
     });
   });
 
+  describe('GET', function () {
+    it('should fail on validation', (done) => {
+      db.get({}, (err) => {
+        assert.match(err.message, /type is required/);
+        done();
+      });
+    });
+
+    it('should return the bucket default for remaining when key does not exist', (done) => {
+      db.get({type: 'ip', key: '8.8.8.8'}, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        assert.equal(result.remaining, 10);
+        done();
+      });
+    });
+
+
+    it('should retrieve the bucket for an existing key', (done) => {
+      db.take({ type: 'ip', key: '8.8.8.8', count: 1 }, (err) => {
+        if (err) {
+          return done(err);
+        }
+        db.get({type: 'ip', key: '8.8.8.8'}, (err, result) => {
+          if (err) {
+            return done(err);
+          }
+          assert.equal(result.remaining, 9);
+
+          db.get({type: 'ip', key: '8.8.8.8'}, (err, result) => {
+            if (err) {
+              return done(err);
+            }
+            assert.equal(result.remaining, 9);
+            done();
+          });
+        });
+      });
+    });
+
+    it('should return the bucket for an unlimited key', (done) => {
+      db.get({type: 'ip', key: '0.0.0.0'}, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        assert.equal(result.remaining, 100);
+
+        db.take({ type: 'ip', key: '0.0.0.0', count: 1 }, (err) => {
+          if (err) {
+            return done(err);
+          }
+          db.get({type: 'ip', key: '0.0.0.0'}, (err, result) => {
+            if (err) {
+              return done(err);
+            }
+            assert.equal(result.remaining, 100);
+            assert.equal(result.limit, 100);
+            assert.exists(result.reset);
+            done();
+          });
+        });
+      });
+    });
+  });
+
   describe('WAIT', function () {
     it('should work with a simple request', (done) => {
       const now = Date.now();

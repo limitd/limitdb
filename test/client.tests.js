@@ -155,6 +155,16 @@ describe('LimitdRedis', () => {
     });
   });
 
+  describe('#get', () => {
+    it('should call #handle with get as the method', (done) => {
+      client.handler = (method, type, key, cb) => {
+        assert.equal(method, 'get');
+        cb();
+      };
+      client.get('test', 'test', done);
+    });
+  });
+
   describe('#reset', () => {
     it('should call #put', (done) => {
       client.put = (type, key, count, cb) => {
