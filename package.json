@@ -5,7 +5,7 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "http://github.com/elbuo8/limitd-redis.git"
+    "url": "http://github.com/auth0/limitd-redis.git"
   },
   "scripts": {
     "test": "NODE_ENV=test istanbul cover _mocha -- --exit"
