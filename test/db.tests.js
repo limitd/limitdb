@@ -378,6 +378,24 @@ describeForEachConfig((getConfig) => {
       });
     });
 
+    it('should delete the element from the database when the bucket is full', done => {
+      //This was implemented before but failed after doing a PUT over a reseted bucket
+      const bucketKey = { type: 'ip',  key: '11.32.32.12'};
+      db.take(bucketKey, (err) => {
+        if (err) return done(err);
+        db.put(bucketKey, (err) => {
+          if (err) return done(err);
+          db.put(bucketKey, (err) => {
+            if (err) return done(err);
+            db._types[bucketKey.type].db.get(bucketKey.key, (err, result) => {
+              assert.isUndefined(result);
+              done();
+            });
+          });
+        });
+      });
+    });
+
     it('should restore the bucket when reseting with all', (done) => {
       const takeParams = { type: 'ip',  key: '21.17.65.41', count: 9 };
       db.take(takeParams, (err) => {
