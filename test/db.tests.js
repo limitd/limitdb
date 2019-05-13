@@ -53,13 +53,6 @@ const configs = {
       types,
       inMemory: true
     };
-  },
-  'rocksdb': () => {
-    return {
-      driver: 'rocksdb',
-      types,
-      path: tmp.dirSync().name
-    };
   }
 };
 
