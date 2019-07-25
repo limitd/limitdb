@@ -141,7 +141,7 @@ limitd.put(type, key, [count], (err, result) => {
 _Warning_: This is method's performance is not guaranteed.
 
 ```js
-limitd.status(type, key, [count], (err, result) => {
+limitd.status(type, key, [maxItems], (err, result) => {
   console.log(result.items);
 });
 ```
@@ -150,7 +150,7 @@ limitd.status(type, key, [count], (err, result) => {
 
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
--  `count`: the ~max amount of entries to return. This is optional and the default is 50.
+-  `maxItems`: the ~max amount of entries to return. This is optional and the default is 50.
 
 ## Author
 
