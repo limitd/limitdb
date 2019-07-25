@@ -150,7 +150,7 @@ limitd.status(type, key, [maxItems], (err, result) => {
 
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
--  `maxItems`: the ~max amount of entries to return. This is optional and the default is 50.
+-  `maxItems`: the ~max amount of entries to return _per shard_. This is optional and the default is 50.
 
 ## Author
 
