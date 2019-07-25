@@ -619,15 +619,14 @@ describe('LimitDBRedis', () => {
           return done(err);
         }
         assert.ok(results.every(r => r.conformant));
-        db.status({ type: 'ip', key: 'some-prefix' }, (err, result) => {
+        db.status({ type: 'ip', key: 'some-prefix', count: 8 }, (err, result) => {
           if (err) {
             return done(err);
           }
           const items = _.sortBy(result.items, 'key');
-          assert.equal(items.length, 10);
-
-          for (let i = 0; i < 10; i++) {
-            assert.equal(items[i].key, `some-prefix-${i}`);
+          assert.equal(items.length, 8);
+          for (let i = 0; i < 8; i++) {
+            assert(items[i].key.startsWith('some-prefix-'));
             assert.equal(items[i].limit, 10);
             assert.equal(items[i].remaining, 9);
             assert.closeTo(items[i].reset, now / 1000, 3);
