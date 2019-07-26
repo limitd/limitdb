@@ -139,6 +139,7 @@ limitd.put(type, key, [count], (err, result) => {
 ## STATUS
 
 _Warning_: This is method's performance is not guaranteed.
+_Warning_: This is method's will only yield results if slaves are available.
 
 ```js
 limitd.status(type, key, [maxItems], (err, result) => {
