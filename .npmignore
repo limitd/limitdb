@@ -1,4 +1,8 @@
 dump.rdb
 coverage
 bench
-
+.travis.yml
+.eslintrc.yml
+.nyc_output
+.git
+npm-debug.log
