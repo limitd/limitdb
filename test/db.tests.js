@@ -107,13 +107,8 @@ describe('LimitDBRedis', () => {
     });
 
     it('should fail when key is not provided', () => {
-      const err = db.validateParams({ type: 'ip' }, 'key');
+      const err = db.validateParams({ type: 'ip' });
       assert.match(err.message, /key is required/);
-    });
-
-    it('should fail when prefix is not provided', () => {
-      const err = db.validateParams({ type: 'ip' }, 'prefix');
-      assert.match(err.message, /prefix is required/);
     });
   });
 
@@ -333,7 +328,7 @@ describe('LimitDBRedis', () => {
       });
       async.series(requests, function (err, results) {
         if (err) return done(err);
-        var lastResult = results[results.length -1];
+        const lastResult = results[results.length -1];
         assert.ok(lastResult.conformant);
         assert.equal(lastResult.remaining, 1);
         assert.closeTo(lastResult.reset, now / 1000, 3);
@@ -601,6 +596,41 @@ describe('LimitDBRedis', () => {
           assert.ok(response.conformant);
           assert.ok(response.delayed);
           assert.closeTo(waited, 600, 20);
+          done();
+        });
+      });
+    });
+  });
+
+  describe('STATUS', function () {
+    it('should fail on validation', (done) => {
+      db.status({}, (err) => {
+        assert.match(err.message, /type is required/);
+        done();
+      });
+    });
+
+    it('should return a list of buckets matching the prefix', (done) => {
+      const now = Date.now();
+      async.map(_.range(10), (i, done) => {
+        db.take({ type: 'ip', key: `some-prefix-${i}` }, done);
+      }, (err, results) => {
+        if (err) {
+          return done(err);
+        }
+        assert.ok(results.every(r => r.conformant));
+        db.status({ type: 'ip', key: 'some-prefix', count: 8 }, (err, result) => {
+          if (err) {
+            return done(err);
+          }
+          const items = _.sortBy(result.items, 'key');
+          assert.equal(items.length, 8);
+          for (let i = 0; i < 8; i++) {
+            assert(items[i].key.startsWith('some-prefix-'));
+            assert.equal(items[i].limit, 10);
+            assert.equal(items[i].remaining, 9);
+            assert.closeTo(items[i].reset, now / 1000, 3);
+          }
           done();
         });
       });

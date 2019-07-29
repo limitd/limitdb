@@ -97,18 +97,17 @@ overrides: {
 
 ## Breaking changes from `Limitdb`
 
-* The `status` method is not supported by this client.
 * Elements will have a default TTL of a week unless specified otherwise.
 
 ## TAKE
 
 ```js
-limitd.take({ type: 'ip', key: '54.21.23.12' }, (err, result) => {
-  console.dir(result);
+limitd.take(type, key, [count], (err, result) => {
+  console.log(result);
 });
 ```
 
-`limitd.take` takes as argument an object with:
+`limitd.take` takes the following arguments:
 
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
@@ -126,14 +125,33 @@ The result object has:
 You can manually reset a fill a bucket using PUT:
 
 ```js
-limitd.put({ type: 'ip', key: '54.21.23.12' }, err => {});
+limitd.put(type, key, [count], (err, result) => {
+  console.log(result);
+});
 ```
 
-`limitd.put` takes as argument an object with:
+`limitd.put` takes the following arguments:
 
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
 -  `count`: the amount of tokens you want to put in the bucket. This is optional and the default is the size of the bucket.
+
+## STATUS
+
+_Warning_: This is method's performance is not guaranteed.
+_Warning_: This is method's will only yield results if slaves are available.
+
+```js
+limitd.status(type, key, [maxItems], (err, result) => {
+  console.log(result.items);
+});
+```
+
+`limitd.status` takes the following arguments:
+
+-  `type`: the bucket type.
+-  `key`: the identifier of the bucket.
+-  `maxItems`: the max amount of entries to return. This is optional and the default is 50.
 
 ## Author
 
