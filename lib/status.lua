@@ -10,6 +10,8 @@ repeat
   for idx = 1, #keys do
     local key = keys[idx]
     local value = redis.call('HMGET', key, 'd', 'r')
+    -- redis stores scientific notation numbers which do not play well
+    value[2] = math.floor(value[2])
     table.insert(value, key)
     table.insert(matches, value)
   end
