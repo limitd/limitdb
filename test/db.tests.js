@@ -388,6 +388,18 @@ describe('LimitDBRedis', () => {
         done();
       });
     });
+
+    it('should work with "all"', (done) => {
+      db.take({ type: 'user', key: 'regexp|test', count: 'all'}, (err, response) => {
+        if (err) {
+          return done(err);
+        }
+        assert.ok(response.conformant);
+        assert.equal(response.remaining, 0);
+        assert.equal(response.limit, 10);
+        done();
+      });
+    });
   });
 
   describe('PUT', function () {
@@ -444,7 +456,7 @@ describe('LimitDBRedis', () => {
       const takeParams = { type: 'ip',  key: '21.17.65.41', count: 9 };
       db.take(takeParams, (err) => {
         if (err) return done(err);
-        db.put({ type: 'ip', key: '21.17.65.41', all: true }, (err) => {
+        db.put({ type: 'ip', key: '21.17.65.41', count: 'all' }, (err) => {
           if (err) return done(err);
           db.take(takeParams, function (err, response) {
             if (err) return done(err);
