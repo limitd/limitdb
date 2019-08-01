@@ -438,12 +438,12 @@ describe('LimitDBRedis', () => {
     });
 
     it('should restore the bucket when reseting', (done) => {
-      const bucketKey = { type: 'ip',  key: '211.123.12.12'};
-      db.take(bucketKey, (err) => {
+      const bucketKey = { type: 'ip',  key: '211.123.12.12' };
+      db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
         if (err) return done(err);
         db.put(bucketKey, (err) => {
           if (err) return done(err);
-          db.take(bucketKey, function (err, response) {
+          db.take(bucketKey, (err, response) => {
             if (err) return done(err);
             assert.equal(response.remaining, 9);
             done();
