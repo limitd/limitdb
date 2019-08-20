@@ -614,41 +614,6 @@ describe('LimitDBRedis', () => {
     });
   });
 
-  describe('STATUS', function () {
-    it('should fail on validation', (done) => {
-      db.status({}, (err) => {
-        assert.match(err.message, /type is required/);
-        done();
-      });
-    });
-
-    it('should return a list of buckets matching the prefix', (done) => {
-      const now = Date.now();
-      async.map(_.range(10), (i, done) => {
-        db.take({ type: 'ip', key: `some-prefix-${i}` }, done);
-      }, (err, results) => {
-        if (err) {
-          return done(err);
-        }
-        assert.ok(results.every(r => r.conformant));
-        db.status({ type: 'ip', key: 'some-prefix', count: 8 }, (err, result) => {
-          if (err) {
-            return done(err);
-          }
-          const items = _.sortBy(result.items, 'key');
-          assert.equal(items.length, 8);
-          for (let i = 0; i < 8; i++) {
-            assert(items[i].key.startsWith('some-prefix-'));
-            assert.equal(items[i].limit, 10);
-            assert.equal(items[i].remaining, 9);
-            assert.closeTo(items[i].reset, now / 1000, 3);
-          }
-          done();
-        });
-      });
-    });
-  });
-
   describe('#resetAll', function () {
     it('should reset all keys of all buckets', (done) => {
       async.parallel([

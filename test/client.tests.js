@@ -165,17 +165,6 @@ describe('LimitdRedis', () => {
     });
   });
 
-  describe('#status', () => {
-    it('should call #db.status', (done) => {
-      client.handler = (method, type, key, cb) => {
-        assert.equal(method, 'status');
-        cb();
-      };
-
-      client.status('test', 'test', done);
-    });
-  });
-
   describe('#reset', () => {
     it('should call #put', (done) => {
       client.put = (type, key, count, cb) => {
