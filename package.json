@@ -14,18 +14,18 @@
   "author": "Auth0",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.6.1",
+    "async": "^2.6.3",
     "cb": "^0.1.0",
-    "disyuntor": "^2.2.0",
-    "ioredis": "^4.5.1",
+    "disyuntor": "^2.2.2",
+    "ioredis": "^4.14.0",
     "lodash": "^4.17.15",
     "lru-cache": "^4.1.5",
     "ms": "^2.1.2",
     "retry": "^0.12.0"
   },
   "devDependencies": {
-    "chai": "^4.1.2",
-    "eslint": "^6.1.0",
+    "chai": "^4.2.0",
+    "eslint": "^6.2.2",
     "mocha": "^5.2.0",
     "nyc": "^14.1.1"
   }
