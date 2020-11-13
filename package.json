@@ -16,7 +16,7 @@
     "fast-clone": "^1.4.2",
     "level-spaces": "~1.1.1",
     "level-ttl": "limitd/level-ttl#limitd_changes",
-    "leveldown": "github:limitd/leveldown#noprebuild_options",
+    "leveldown": "^5.6.0",
     "levelup": "^2.0.2",
     "lodash": "^4.17.4",
     "lru-cache": "^4.0.2",
