@@ -8,7 +8,7 @@ const assert   = require('chai').assert;
 const buckets = {
   ip: {
     size: 10,
-    per_second: 5,
+    per_day: 5,
     overrides: {
       '127.0.0.1': {
         per_second: 100
@@ -166,7 +166,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
+    it.only('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
       const now = Date.now();
       db.take({
         type: 'ip',
@@ -397,6 +397,20 @@ describe('LimitDBRedis', () => {
         assert.ok(response.conformant);
         assert.equal(response.remaining, 0);
         assert.equal(response.limit, 10);
+        done();
+      });
+    });
+
+    it('should use config override when provided"', (done) => {
+      const configOverride = { bucketSize: 7 };
+      db.take({ type: 'ip', key: '7.7.7.7', configOverride}, (err, response) => {
+        if (err) {
+          return done(err);
+        }
+        console.log(`got response: ${JSON.stringify(response)}`);
+        assert.ok(response.conformant);
+        assert.equal(response.remaining, 6);
+        assert.equal(response.limit, 7);
         done();
       });
     });
