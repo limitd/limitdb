@@ -8,7 +8,7 @@ const assert   = require('chai').assert;
 const buckets = {
   ip: {
     size: 10,
-    per_day: 5,
+    per_second: 5,
     overrides: {
       '127.0.0.1': {
         per_second: 100
@@ -166,7 +166,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it.only('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
+    it('should return TRUE with right remaining and reset after filling up the bucket', (done) => {
       const now = Date.now();
       db.take({
         type: 'ip',
