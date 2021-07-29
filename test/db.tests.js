@@ -401,16 +401,28 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use config override when provided"', (done) => {
+    it('should use bucketSize config override when provided', (done) => {
       const configOverride = { bucketSize: 7 };
       db.take({ type: 'ip', key: '7.7.7.7', configOverride}, (err, response) => {
         if (err) {
           return done(err);
         }
-        console.log(`got response: ${JSON.stringify(response)}`);
         assert.ok(response.conformant);
         assert.equal(response.remaining, 6);
         assert.equal(response.limit, 7);
+        done();
+      });
+    });
+
+    it('should use refillRateMsPerToken config override when provided', (done) => {
+      const oneDayInMs = ms('24h');
+      const configOverride = { refillRateMsPerToken: oneDayInMs };
+      db.take({ type: 'ip', key: '7.7.7.8', configOverride}, (err, response) => {
+        if (err) {
+          return done(err);
+        }
+        const dayFromNow = Date.now() + oneDayInMs;
+        assert.closeTo(response.reset, dayFromNow / 1000, 3);
         done();
       });
     });
@@ -523,6 +535,40 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
+    it('should use bucketSize config override when provided', (done) => {
+      const configOverride = { bucketSize: 4 };
+      const bucketKey = { type: 'ip',  key: '7.7.7.9', configOverride };
+      db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
+        if (err) return done(err);
+        db.put(bucketKey, (err) => { // restores all 4
+          if (err) return done(err);
+          db.take(bucketKey, (err, response) => { // takes 1, 3 remain
+            if (err) return done(err);
+            assert.equal(response.remaining, 3);
+            done();
+          });
+        });
+      });
+    });
+
+    it('should use bucketSize config override when provided', (done) => {
+      const oneDayInMs = ms('24h');
+      const configOverride = { refillRateMsPerToken: oneDayInMs };
+      const bucketKey = { type: 'ip',  key: '7.7.7.9', configOverride };
+      db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
+        if (err) return done(err);
+        db.put(bucketKey, (err) => { // restores all 4
+          if (err) return done(err);
+          db.take(bucketKey, (err, response) => { // takes 1, 3 remain
+            if (err) return done(err);
+            const dayFromNow = Date.now() + oneDayInMs;
+            assert.closeTo(response.reset, dayFromNow / 1000, 3);
+            done();
+          });
+        });
+      });
+    });
   });
 
   describe('GET', function () {
@@ -542,7 +588,6 @@ describe('LimitDBRedis', () => {
         done();
       });
     });
-
 
     it('should retrieve the bucket for an existing key', (done) => {
       db.take({ type: 'ip', key: '8.8.8.8', count: 1 }, (err) => {
@@ -589,6 +634,36 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
+    it('should use bucketSize config override when provided', (done) => {
+      const configOverride = { bucketSize: 7 };
+      db.get({type: 'ip', key: '7.7.7.10', configOverride}, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        assert.equal(result.remaining, 7);
+        assert.equal(result.limit, 7);
+        done();
+      });
+    });
+
+    it('should use refillRateMsPerToken config override when provided', (done) => {
+      const oneDayInMs = ms('24h');
+      const configOverride = { refillRateMsPerToken: oneDayInMs };
+      db.take({ type: 'ip', key: '7.7.7.11', configOverride }, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        db.get({ type: 'ip', key: '7.7.7.11', configOverride }, (err, result) => {
+          if (err) {
+            return done(err);
+          }
+          const dayFromNow = Date.now() + oneDayInMs;
+          assert.closeTo(result.reset, dayFromNow / 1000, 3);
+          done();
+        });
+      });
+    });
   });
 
   describe('WAIT', function () {
@@ -626,6 +701,33 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
+    it('should use refillRateMsPerToken config override when provided', (done) => {
+      const oneSecondInMs = ms('1s');
+      const configOverride = { refillRateMsPerToken: oneSecondInMs };
+      db.take({
+        type: 'ip',
+        key: '211.76.23.6',
+        count: 10,
+        configOverride
+      }, (err) => {
+        if (err) return done(err);
+        const waitingSince = Date.now();
+        db.wait({
+          type: 'ip',
+          key: '211.76.23.6',
+          count: 1,
+          configOverride
+        }, function (err, response) {
+          if (err) { return done(err); }
+          var waited = Date.now() - waitingSince;
+          assert.ok(response.conformant);
+          assert.ok(response.delayed);
+          assert.closeTo(waited, oneSecondInMs, 20);
+          done();
+        });
+      });
+    })
   });
 
   describe('#resetAll', function () {
