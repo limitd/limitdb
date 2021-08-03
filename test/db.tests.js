@@ -90,28 +90,6 @@ describe('LimitDBRedis', () => {
     });
   });
 
-  describe('#validateParms', () => {
-    it('should fail when params are not provided', () => {
-      const err = db.validateParams();
-      assert.match(err.message, /params are required/);
-    });
-
-    it('should fail when type is not provided', () => {
-      const err = db.validateParams({});
-      assert.match(err.message, /type is required/);
-    });
-
-    it('should fail when type is not defined', () => {
-      const err = db.validateParams({ type: 'cc' });
-      assert.match(err.message, /undefined bucket type cc/);
-    });
-
-    it('should fail when key is not provided', () => {
-      const err = db.validateParams({ type: 'ip' });
-      assert.match(err.message, /key is required/);
-    });
-  });
-
   describe('#configurateBucketKey', () => {
     it('should add new bucket to existing configuration', () => {
       db.configurateBucket('test', { size: 5 });
@@ -401,8 +379,8 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use bucketSize config override when provided', (done) => {
-      const configOverride = { bucketSize: 7 };
+    it('should use size config override when provided', (done) => {
+      const configOverride = { size : 7 };
       db.take({ type: 'ip', key: '7.7.7.7', configOverride}, (err, response) => {
         if (err) {
           return done(err);
@@ -414,9 +392,9 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use refillRateMsPerToken config override when provided', (done) => {
+    it('should use per interval config override when provided', (done) => {
       const oneDayInMs = ms('24h');
-      const configOverride = { refillRateMsPerToken: oneDayInMs };
+      const configOverride = { per_day: 1 };
       db.take({ type: 'ip', key: '7.7.7.8', configOverride}, (err, response) => {
         if (err) {
           return done(err);
@@ -424,6 +402,40 @@ describe('LimitDBRedis', () => {
         const dayFromNow = Date.now() + oneDayInMs;
         assert.closeTo(response.reset, dayFromNow / 1000, 3);
         done();
+      });
+    });
+
+    it('should use size AND interval config override when provided', (done) => {
+      const oneDayInMs = ms('24h');
+      const configOverride = { size: 3, per_day: 1 };
+      db.take({ type: 'ip', key: '7.7.7.8', configOverride}, (err, response) => {
+        if (err) {
+          return done(err);
+        }
+        assert.ok(response.conformant);
+        assert.equal(response.remaining, 2);
+        assert.equal(response.limit, 3);
+
+        const dayFromNow = Date.now() + oneDayInMs;
+        assert.closeTo(response.reset, dayFromNow / 1000, 3);
+        done();
+      });
+    });
+
+    it('should set ttl to reflect config override', (done) => {
+      const configOverride = { per_day: 5 };
+      const params = { type: 'ip', key: '7.7.7.9', configOverride};
+      db.take(params, function (err) {
+        if (err) {
+          return done(err);
+        }
+        db.redis.ttl(`${params.type}:${params.key}`, (err, ttl) => {
+          if (err) {
+            return done(err);
+          }
+          assert.equal(ttl, 86400);
+          done();
+        });
       });
     });
   });
@@ -536,8 +548,8 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use bucketSize config override when provided', (done) => {
-      const configOverride = { bucketSize: 4 };
+    it('should use size config override when provided', (done) => {
+      const configOverride = { size: 4 };
       const bucketKey = { type: 'ip',  key: '7.7.7.9', configOverride };
       db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
         if (err) return done(err);
@@ -552,10 +564,10 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use bucketSize config override when provided', (done) => {
+    it('should use per interval config override when provided', (done) => {
       const oneDayInMs = ms('24h');
-      const configOverride = { refillRateMsPerToken: oneDayInMs };
-      const bucketKey = { type: 'ip',  key: '7.7.7.9', configOverride };
+      const configOverride = { per_day: 1 };
+      const bucketKey = { type: 'ip',  key: '7.7.7.10', configOverride };
       db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
         if (err) return done(err);
         db.put(bucketKey, (err) => { // restores all 4
@@ -565,6 +577,46 @@ describe('LimitDBRedis', () => {
             const dayFromNow = Date.now() + oneDayInMs;
             assert.closeTo(response.reset, dayFromNow / 1000, 3);
             done();
+          });
+        });
+      });
+    });
+
+    it('should use size AND per interval config override when provided', (done) => {
+      const oneDayInMs = ms('24h');
+      const configOverride = { size: 4, per_day: 1 };
+      const bucketKey = { type: 'ip',  key: '7.7.7.11', configOverride };
+      db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
+        if (err) return done(err);
+        db.put(bucketKey, (err) => { // restores all 4
+          if (err) return done(err);
+          db.take(bucketKey, (err, response) => { // takes 1, 3 remain
+            if (err) return done(err);
+            assert.equal(response.remaining, 3);
+            const dayFromNow = Date.now() + oneDayInMs;
+            assert.closeTo(response.reset, dayFromNow / 1000, 3);
+            done();
+          });
+        });
+      });
+    });
+
+    it('should set ttl to reflect config override', (done) => {
+      const configOverride = { per_day: 5 };
+      const bucketKey = { type: 'ip', key: '7.7.7.12', configOverride};
+      db.take(Object.assign({ count: 'all' }, bucketKey), (err) => {
+        if (err) return done(err);
+        db.put(bucketKey, (err) => { // restores all 4
+          if (err) return done(err);
+          db.take(bucketKey, (err, response) => { // takes 1, 3 remain
+            if (err) return done(err);
+            db.redis.ttl(`${bucketKey.type}:${bucketKey.key}`, (err, ttl) => {
+              if (err) {
+                return done(err);
+              }
+              assert.equal(ttl, 86400);
+              done();
+            });
           });
         });
       });
@@ -635,9 +687,9 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use bucketSize config override when provided', (done) => {
-      const configOverride = { bucketSize: 7 };
-      db.get({type: 'ip', key: '7.7.7.10', configOverride}, (err, result) => {
+    it('should use size config override when provided', (done) => {
+      const configOverride = { size: 7 };
+      db.get({type: 'ip', key: '7.7.7.13', configOverride}, (err, result) => {
         if (err) {
           return done(err);
         }
@@ -647,14 +699,14 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use refillRateMsPerToken config override when provided', (done) => {
+    it('should use per interval config override when provided', (done) => {
       const oneDayInMs = ms('24h');
-      const configOverride = { refillRateMsPerToken: oneDayInMs };
-      db.take({ type: 'ip', key: '7.7.7.11', configOverride }, (err, result) => {
+      const configOverride = { per_day: 1 };
+      db.take({ type: 'ip', key: '7.7.7.14', configOverride }, (err, result) => {
         if (err) {
           return done(err);
         }
-        db.get({ type: 'ip', key: '7.7.7.11', configOverride }, (err, result) => {
+        db.get({ type: 'ip', key: '7.7.7.14', configOverride }, (err, result) => {
           if (err) {
             return done(err);
           }
@@ -702,9 +754,9 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should use refillRateMsPerToken config override when provided', (done) => {
-      const oneSecondInMs = ms('1s');
-      const configOverride = { refillRateMsPerToken: oneSecondInMs };
+    it('should use per interval config override when provided', (done) => {
+      const oneSecondInMs = ms('1s') / 3;
+      const configOverride = { per_second: 3, size: 10 };
       db.take({
         type: 'ip',
         key: '211.76.23.6',
