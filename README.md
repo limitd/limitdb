@@ -112,6 +112,7 @@ limitd.take(type, key, [count], (err, result) => {
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
 -  `count`: the amount of tokens you need. This is optional and the default is 1.
+-  `configOverride`: caller-provided bucket configuration for this operation
 
 The result object has:
 
@@ -135,6 +136,29 @@ limitd.put(type, key, [count], (err, result) => {
 -  `type`: the bucket type.
 -  `key`: the identifier of the bucket.
 -  `count`: the amount of tokens you want to put in the bucket. This is optional and the default is the size of the bucket.
+-  `configOverride`: caller-provided bucket configuration for this operation
+
+## Overriding Configuration at Runtime
+Since the method of storing overrides for buckets in memory does not scale to a large number, limitd-redis provides a way for callers to pass in configuration from an external data store.  The shape of this `configOverride` parameter (available on `take`, `put`, `get`, and `wait`) is exactly the same as `Buckets` above ^.
+
+An example configuration override call might look like this:
+
+```js
+const configOverride = {
+  size: 45,
+  per_hour: 15
+}
+// take one
+limitd.take(type, key, { configOverride }, (err, result) => {
+  console.log(result);
+}
+// take multiple
+limitd.take(type, key, { count: 3, configOverride }, (err, result) => {
+  console.log(result);
+}););
+```
+
+Config overrides follow the same rules as Bucket configuration elements with respect to default size when not provided and ttl.
 
 ## Author
 
