@@ -608,7 +608,7 @@ describe('LimitDBRedis', () => {
         if (err) return done(err);
         db.put(bucketKey, (err) => { // restores all 4
           if (err) return done(err);
-          db.take(bucketKey, (err, response) => { // takes 1, 3 remain
+          db.take(bucketKey, (err) => { // takes 1, 3 remain
             if (err) return done(err);
             db.redis.ttl(`${bucketKey.type}:${bucketKey.key}`, (err, ttl) => {
               if (err) {
@@ -702,7 +702,7 @@ describe('LimitDBRedis', () => {
     it('should use per interval config override when provided', (done) => {
       const oneDayInMs = ms('24h');
       const configOverride = { per_day: 1 };
-      db.take({ type: 'ip', key: '7.7.7.14', configOverride }, (err, result) => {
+      db.take({ type: 'ip', key: '7.7.7.14', configOverride }, (err) => {
         if (err) {
           return done(err);
         }
@@ -779,7 +779,7 @@ describe('LimitDBRedis', () => {
           done();
         });
       });
-    })
+    });
   });
 
   describe('#resetAll', function () {
