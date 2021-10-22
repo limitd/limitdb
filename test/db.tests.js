@@ -47,13 +47,17 @@ const buckets = {
         size: 10
       }
     }
+  },
+  tenant: {
+    size: 1,
+    per_second: 1
   }
 };
 
 describe('LimitDBRedis', () => {
   let db;
 
-  beforeEach(function(done) {
+  beforeEach((done) => {
     db = new LimitDB({ uri: 'localhost', buckets, prefix: 'tests:' });
     db.once('error', done);
     db.once('ready', () => {
@@ -61,7 +65,7 @@ describe('LimitDBRedis', () => {
     });
   });
 
-  afterEach(function(done) {
+  afterEach((done) => {
     db.close((err) => {
       // Can't close DB if it was never open
       if (err && err.message.indexOf('enableOfflineQueue') > 0) {
@@ -99,7 +103,7 @@ describe('LimitDBRedis', () => {
     it('should replace configuration of existing type',  () => {
       db.configurateBucket('ip', { size: 1 });
       assert.equal(db.buckets.ip.size, 1);
-      assert.equal(db.buckets.ip.overrides.length, 0);
+      assert.equal(Object.keys(db.buckets.ip.overrides).length, 0);
     });
   });
 
@@ -128,9 +132,9 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should add a ttl to buckets', function (done) {
+    it('should add a ttl to buckets', (done) => {
       const params = { type: 'ip', key: '211.45.66.1'};
-      db.take(params, function (err) {
+      db.take(params, (err) => {
         if (err) {
           return done(err);
         }
@@ -163,7 +167,7 @@ describe('LimitDBRedis', () => {
           db.take({
             type: 'ip',
             key:  '5.5.5.5'
-          }, function (err, result) {
+          }, (err, result) => {
             if (err) {
               return done(err);
             }
@@ -183,7 +187,7 @@ describe('LimitDBRedis', () => {
       db.take({
         type: 'ip',
         key:  '1.1.1.1'
-      }, function (err, result) {
+      }, (err, result) => {
         if (err) return done(err);
         assert.ok(result.conformant);
         assert.equal(result.remaining, 9);
@@ -199,7 +203,7 @@ describe('LimitDBRedis', () => {
         type:  'ip',
         key:   '2.2.2.2',
         count: 12
-      }, function (err, result) {
+      }, (err, result) => {
         if (err) return done(err);
         assert.notOk(result.conformant);
         assert.equal(result.remaining, 10);
@@ -218,7 +222,7 @@ describe('LimitDBRedis', () => {
         db.take(takeParams, done);
       }, (err, responses) => {
         if (err) return done(err);
-        assert.ok(responses.every(function (r) { return r.conformant; }));
+        assert.ok(responses.every((r) => { return r.conformant; }));
         db.take(takeParams, (err, response) => {
           assert.notOk(response.conformant);
           assert.equal(response.remaining, 0);
@@ -236,7 +240,7 @@ describe('LimitDBRedis', () => {
         db.take(takeParams, done);
       }, (err) => {
         if (err) return done(err);
-        db.take(takeParams, function (err, result) {
+        db.take(takeParams, (err, result) => {
           if (err) return done(err);
           assert.ok(result.conformant);
           assert.ok(result.remaining, 89);
@@ -254,7 +258,7 @@ describe('LimitDBRedis', () => {
         db.take(takeParams, done);
       }, (err) => {
         if (err) return done(err);
-        db.take(takeParams, function (err, result) {
+        db.take(takeParams, (err, result) => {
           assert.ok(result.conformant);
           assert.ok(result.remaining, 39);
           done();
@@ -304,7 +308,7 @@ describe('LimitDBRedis', () => {
       const requests = _.range(9).map(() => {
         return cb => db.take({ type: 'ip', key: '211.123.12.36' }, cb);
       });
-      async.series(requests, function (err, results) {
+      async.series(requests, (err, results) => {
         if (err) return done(err);
         const lastResult = results[results.length -1];
         assert.ok(lastResult.conformant);
@@ -315,7 +319,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should set reset to UNIX timestamp regardless of period', function(done){
+    it('should set reset to UNIX timestamp regardless of period', (done) => {
       const now = Date.now();
       db.take({ type: 'ip', key: '10.0.0.1' }, (err, result) => {
         if (err) { return done(err); }
@@ -425,7 +429,7 @@ describe('LimitDBRedis', () => {
     it('should set ttl to reflect config override', (done) => {
       const configOverride = { per_day: 5 };
       const params = { type: 'ip', key: '7.7.7.9', configOverride};
-      db.take(params, function (err) {
+      db.take(params, (err) => {
         if (err) {
           return done(err);
         }
@@ -438,9 +442,42 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
+    it('should work with no overrides', (done) => {
+      const takeParams = { type: 'tenant', key: 'foo'};
+      db.take(takeParams, (err, response) => {
+        assert.ok(response.conformant);
+        assert.equal(response.remaining, 0);
+        done();
+      });
+    });
+
+    it('should work with thousands of overrides', (done) => {
+      const big = _.cloneDeep(buckets);
+      for (let i = 0; i < 10000; i++) {
+        big.ip.overrides[`regex${i}`] = {
+          match: `172\\.16\\.${i}`,
+          per_second: 10
+        };
+      }
+      db.configurateBuckets(big);
+
+      const takeParams = { type: 'ip', key: '172.16.1.1'};
+      async.map(_.range(10), (i, done) => {
+        db.take(takeParams, done);
+      }, (err, responses) => {
+        if (err) return done(err);
+        assert.ok(responses.every((r) => { return r.conformant; }));
+        db.take(takeParams, (err, response) => {
+          assert.notOk(response.conformant);
+          assert.equal(response.remaining, 0);
+          done();
+        });
+      });
+    });
   });
 
-  describe('PUT', function () {
+  describe('PUT', () => {
     it('should fail on validation', (done) => {
       db.put({}, (err) => {
         assert.match(err.message, /type is required/);
@@ -496,7 +533,7 @@ describe('LimitDBRedis', () => {
         if (err) return done(err);
         db.put({ type: 'ip', key: '21.17.65.41', count: 'all' }, (err) => {
           if (err) return done(err);
-          db.take(takeParams, function (err, response) {
+          db.take(takeParams, (err, response) => {
             if (err) return done(err);
             assert.equal(response.conformant, true);
             assert.equal(response.remaining, 1);
@@ -512,7 +549,7 @@ describe('LimitDBRedis', () => {
         if (err) return done(err);
         db.put(bucketKey);
         setImmediate(() => {
-          db.take(bucketKey, function (err, response) {
+          db.take(bucketKey, (err, response) => {
             if (err) return done(err);
             assert.equal(response.remaining, 9);
             done();
@@ -623,7 +660,7 @@ describe('LimitDBRedis', () => {
     });
   });
 
-  describe('GET', function () {
+  describe('GET', () => {
     it('should fail on validation', (done) => {
       db.get({}, (err) => {
         assert.match(err.message, /type is required/);
@@ -718,7 +755,7 @@ describe('LimitDBRedis', () => {
     });
   });
 
-  describe('WAIT', function () {
+  describe('WAIT', () => {
     it('should work with a simple request', (done) => {
       const now = Date.now();
       db.wait({ type: 'ip', key: '211.76.23.4' }, (err, response) => {
@@ -731,7 +768,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should be delayed when traffic is non conformant', function (done) {
+    it('should be delayed when traffic is non conformant', (done) => {
       db.take({
         type: 'ip',
         key: '211.76.23.5',
@@ -743,7 +780,7 @@ describe('LimitDBRedis', () => {
           type: 'ip',
           key: '211.76.23.5',
           count: 3
-        }, function (err, response) {
+        }, (err, response) => {
           if (err) { return done(err); }
           var waited = Date.now() - waitingSince;
           assert.ok(response.conformant);
@@ -770,7 +807,7 @@ describe('LimitDBRedis', () => {
           key: '211.76.23.6',
           count: 1,
           configOverride
-        }, function (err, response) {
+        }, (err, response) => {
           if (err) { return done(err); }
           var waited = Date.now() - waitingSince;
           assert.ok(response.conformant);
@@ -782,7 +819,7 @@ describe('LimitDBRedis', () => {
     });
   });
 
-  describe('#resetAll', function () {
+  describe('#resetAll', () => {
     it('should reset all keys of all buckets', (done) => {
       async.parallel([
         // Empty those buckets...
