@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/elbuo8/limitd-redis.svg?branch=master)](https://travis-ci.org/elbuo8/limitd-redis)
+[![Build Status](https://travis-ci.org/auth0/limitd-redis.svg?branch=master)](https://travis-ci.org/auth0/limitd-redis)
 
 `limitd-redis` is client for limits on top of `redis` using [Token Buckets](https://en.wikipedia.org/wiki/Token_bucket).
 It's a fork from [LimitDB](https://github.com/limitd/limitdb).
@@ -42,9 +42,10 @@ Options available:
 
 Buckets:
 
-- `size` is the maximun content of the bucket. This is the maximun burst you allow.
-- `per_interval` is the amount of tokens that the bucket receive on every interval.
-- `interval` defines the inverval in milliseconds.
+- `size` (number): is the maximun content of the bucket. This is the maximun burst you allow.
+- `per_interval` (number): is the amount of tokens that the bucket receive on every interval.
+- `interval` (number): defines the inverval in milliseconds.
+- `unlimited` (boolean = false): unlimited requests (skip take).
 
 You can also define your rates using `per_second`, `per_minute`, `per_hour`, `per_day`. So `per_second: 1` is equivalent to `per_interval: 1, interval: 1000`.
 
@@ -54,7 +55,7 @@ If you don't specify a filling rate with `per_interval` or any other `per_x`, th
 
 You can also define `overrides` inside your type definitions as follows:
 
-```javascript
+```js
 buckets = {
   ip: {
     size: 10,
@@ -73,7 +74,7 @@ In this case the specific bucket for `127.0.0.1` of type `ip` will have a greate
 
 It is also possible to define overrides by regex:
 
-```
+```js
 overrides: {
   'local-ips': {
     match:      /192\.168\./
@@ -85,7 +86,7 @@ overrides: {
 
 It's possible to configure expiration of overrides:
 
-```
+```js
 overrides: {
   '54.32.12.31': {
     size:       100,
