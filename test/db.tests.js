@@ -536,6 +536,40 @@ describe('LimitDBRedis', () => {
       });
     });
 
+    it('should do nothing if bucket is already full', (done) => {
+      const key = '1.2.3.4';
+      db.put({ type: 'ip', key, count: 1 }, (err, result) => {
+        if (err) {
+          return done(err);
+        }
+        assert.equal(result.remaining, 10);
+
+        db.take({ type: 'ip', key, count: 1 }, (err, result) => {
+          if (err) {
+            return done(err);
+          }
+          assert.equal(result.remaining, 9);
+          done();
+        });
+      });
+    });
+
+    it('should not put more than the bucket size', (done) => {
+      db.take({ type: 'ip', key: '8.8.8.8', count: 2 }, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        db.put({ type: 'ip', key: '8.8.8.8', count: 4 }, (err, result) => {
+          if (err) {
+            return done(err);
+          }
+          assert.equal(result.remaining, 10);
+          done();
+        });
+      });
+    });
+
     it('should not override on unlimited buckets', (done) => {
       const bucketKey = { type: 'ip',  key: '0.0.0.0', count: 1000 };
       db.put(bucketKey, (err, result) => {
@@ -640,16 +674,18 @@ describe('LimitDBRedis', () => {
     });
 
     it('should work with negative values', (done) => {
-      db.put({ type: 'ip', key: '8.8.8.1', count: -100 }, (err) => {
+      db.put({ type: 'ip', key: '8.8.8.1', count: -100 }, (err, result) => {
         if (err) {
           return done(err);
         }
+        assert.closeTo(result.remaining, -90, 1);
+
         db.take({ type: 'ip', key: '8.8.8.1' }, (err, result) => {
           if (err) {
             return done(err);
           }
           assert.equal(result.conformant, false);
-          assert.closeTo(result.remaining, -99, 1);
+          assert.closeTo(result.remaining, -89, 1);
           done();
         });
       });
