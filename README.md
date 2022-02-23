@@ -42,9 +42,9 @@ Options available:
 
 Buckets:
 
-- `size` (number): is the maximun content of the bucket. This is the maximun burst you allow.
+- `size` (number): is the maximum content of the bucket. This is the maximum burst you allow.
 - `per_interval` (number): is the amount of tokens that the bucket receive on every interval.
-- `interval` (number): defines the inverval in milliseconds.
+- `interval` (number): defines the interval in milliseconds.
 - `unlimited` (boolean = false): unlimited requests (skip take).
 
 You can also define your rates using `per_second`, `per_minute`, `per_hour`, `per_day`. So `per_second: 1` is equivalent to `per_interval: 1, interval: 1000`.
