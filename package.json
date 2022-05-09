@@ -8,13 +8,12 @@
     "url": "http://github.com/auth0/limitd-redis.git"
   },
   "scripts": {
-    "test": "NODE_ENV=test nyc mocha --exit"
+    "test": "trap 'docker-compose down --remove-orphans -v' EXIT; docker-compose up -d && NODE_ENV=test nyc mocha --exit"
   },
   "author": "Auth0",
   "license": "MIT",
   "dependencies": {
     "async": "^2.6.1",
-    "cb": "^0.1.0",
     "disyuntor": "^3.5.0",
     "ioredis": "^4.5.1",
     "lodash": "^4.17.15",
