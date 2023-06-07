@@ -29,7 +29,13 @@ const limitd = new Limitd({
       per_second: 5
     }
   },
-  prefix: 'test:'
+  prefix: 'test:',
+  ping: {
+    enabled: true,
+    interval: 1000,
+    maxFailedAttempts: 5,
+    reconnectIfFailed: true
+  }
 });
 ```
 
@@ -39,6 +45,7 @@ Options available:
 - `nodes` (array): [Redis Cluster Configuration](https://github.com/luin/ioredis#cluster).
 - `buckets` (object): Setup your bucket types.
 - `prefix` (string): Prefix keys in Redis.
+- `ping` (object): Configure ping to Redis DB.
 
 Buckets:
 
@@ -46,6 +53,13 @@ Buckets:
 - `per_interval` (number): is the amount of tokens that the bucket receive on every interval.
 - `interval` (number): defines the interval in milliseconds.
 - `unlimited` (boolean = false): unlimited requests (skip take).
+
+Ping:
+
+- `enabled` (boolean): determines if the ping functionality is enabled or not. Default: false.
+- `interval` (number): represents the time between two consecutive pings. Default: 1000.
+- `maxFailedAttempts` (number): is the allowed number of failed pings before declaring the connection as dead. Default: 5.
+- `reconnectIfFailed` (boolean): indicates whether we should try to reconnect is the connection is declared dead. Default: true.
 
 You can also define your rates using `per_second`, `per_minute`, `per_hour`, `per_day`. So `per_second: 1` is equivalent to `per_interval: 1, interval: 1000`.
 
