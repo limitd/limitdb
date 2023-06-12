@@ -60,6 +60,7 @@ Ping:
 - `interval` (number): represents the time between two consecutive pings. Default: 1000.
 - `maxFailedAttempts` (number): is the allowed number of failed pings before declaring the connection as dead. Default: 5.
 - `reconnectIfFailed` (boolean): indicates whether we should try to reconnect is the connection is declared dead. Default: true.
+- `maxFailedAttemptsToRetryReconnect` (number): represents the number of failed pings before firing another reconnect attempt. Default: 10.
 
 You can also define your rates using `per_second`, `per_minute`, `per_hour`, `per_day`. So `per_second: 1` is equivalent to `per_interval: 1, interval: 1000`.
 

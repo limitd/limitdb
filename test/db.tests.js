@@ -5,7 +5,7 @@ const _        = require('lodash');
 const LimitDB  = require('../lib/db');
 const assert   = require('chai').assert;
 const {Toxiproxy} = require('toxiproxy-node-client');
-const { expect } = require('chai');
+const crypto  = require('crypto')
 
 const buckets = {
   ip: {
@@ -1005,7 +1005,7 @@ describe('LimitDBRedis', () => {
       toxiproxy = new Toxiproxy("http://localhost:8474");
       proxyBody = {
         listen: "0.0.0.0:22222",
-        name: "ihsw_test_redis_master",
+        name: crypto.randomUUID(), //randomize name to avoid concurrency issues
         upstream: "redis:6379"
       };
       toxiproxy.createProxy(proxyBody)
@@ -1021,70 +1021,76 @@ describe('LimitDBRedis', () => {
     })
   
     it('should emit ping success', (done) => {
-      let called = false;
       db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
-      db.on(('ping - success'), () => {
-        if (!called) {
-          called = true;
-          done();
-        }
+      db.once(('ping - success'), () => {
+        done();
       });
     });
   
-    it('should emit "ping - fail" when redis stops responding pings and client is not configured to reconnect', (done) => {
-      let called = false;
+    it('should emit "ping - error" when redis stops responding pings and client is not configured to reconnect', (done) => {
       db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, reconnectIfFailed: false} })
-      db.on(('ready'), () => {
+      db.once(('ready'), () => {
         redisProxy.enabled = false
         redisProxy.update()
       })
-      db.on(('ping - fail'), () => {
-        if (!called) {
-          called = true;
-          done();
-        }
+      db.once(('ping - error'), () => {
+        done();
       });
     });
   
     it('should emit "ping - reconnect attempted" when redis stops responding pings and client is configured to reconnect', (done) => {
-      let called = false;
       db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
-      db.on(('ready'), () => {
-        redisProxy.enabled = false
-        redisProxy.update()
+      db.once(('ready'), () => {
+        redisProxy.enabled = false;
+        redisProxy.update();
       })
-      db.on(('ping - reconnect attempted'), () => {
-        if (!called) {
-          called = true;
-          done();
-        }
+      db.once(('ping - reconnect attempted'), () => {
+        done();
       });
     });
   
     it('should NOT emit ping events when ping is disabled', (done) => {
       let called = false;
       db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, enabled: false} })      
-      db.on(('ping - success'), () => {
-        if (!called) {
-          called = true;
-          done(new Error('event `ping - success` emitted'));
-        }
+      db.once(('ping - success'), () => {
+        done(new Error('event `ping - success` emitted'));
       });
-      db.on(('ping - fail'), () => {
-        if (!called) {
-          called = true;
-          done(new Error('event `ping - fail` emitted'));
-        }
+      db.once(('ping - error'), () => {
+        done(new Error('event `ping - error` emitted'));
       });
-      db.on(('ping - reconnect attempted'), () => {
-        if (!called) {
-          called = true;
-          done(new Error('event `ping - reconnect attempted` emitted'));
-        }
+      db.once(('ping - reconnect attempted'), () => {
+        done(new Error('event `ping - reconnect attempted` emitted'));
       });
       //If after 100ms there are no interactions, we mark the test as passed.
       setTimeout(done, 100)
     });
+
+    it.only('should recover from a connection loss', (done) => {
+      let pingResponded = false;
+      let reconnected = false;
+      let timeoutId;
+      db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, interval: 50} })
+      db.on(('ping - success'), (duration) => {
+        if (!pingResponded) {
+          pingResponded = true;
+          redisProxy.remove();
+        } else if (reconnected) {
+          clearTimeout(timeoutId);
+          done();
+        }
+      })
+      
+      db.on(('ping - reconnect attempted'), (pings) => {
+        if (pingResponded && !reconnected) {
+          reconnected = true;
+          toxiproxy.createProxy(proxyBody)
+            .then((proxy) => {
+              redisProxy = proxy; 
+            })
+        }
+      });
+
+      timeoutId = setTimeout(() => done(new Error("Not reconnected")), 1800);
+    });
   });
-  
 });
