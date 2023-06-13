@@ -995,7 +995,8 @@ describe('LimitDBRedis', () => {
       enabled: true,
       interval: 10,
       maxFailedAttempts: 3,
-      reconnectIfFailed: true
+      reconnectIfFailed: true,
+      maxFailedAttemptsToRetryReconnect: 10
     }
   
     let redisProxy;
