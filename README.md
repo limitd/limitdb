@@ -56,11 +56,12 @@ Buckets:
 
 Ping:
 
-- `enabled` (boolean): determines if the ping functionality is enabled or not. Default: false.
+- `enabled` (function()=>boolean): function that returns whether the ping functionality is enabled or not. Default: () => false.
 - `interval` (number): represents the time between two consecutive pings. Default: 1000.
 - `maxFailedAttempts` (number): is the allowed number of failed pings before declaring the connection as dead. Default: 5.
 - `reconnectIfFailed` (boolean): indicates whether we should try to reconnect is the connection is declared dead. Default: true.
 - `maxFailedAttemptsToRetryReconnect` (number): represents the number of failed pings before firing another reconnect attempt. Default: 10.
+- `msBetweenEnabledChecks` (number): when ping is disabled, this represents the interval between two consecutive ping.enabled() checks. Default: 1000.
 
 You can also define your rates using `per_second`, `per_minute`, `per_hour`, `per_day`. So `per_second: 1` is equivalent to `per_interval: 1, interval: 1000`.
 

@@ -992,7 +992,7 @@ describe('LimitDBRedis', () => {
 
   describe('PING', () => {
     let ping = {
-      enabled: true,
+      enabled: () => true,
       interval: 10,
       maxFailedAttempts: 3,
       reconnectIfFailed: true,
@@ -1020,7 +1020,7 @@ describe('LimitDBRedis', () => {
     afterEach((done) => {
       redisProxy.remove().then(done)
     })
-  
+
     it('should emit ping success', (done) => {
       db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
       db.once(('ping - success'), () => {
@@ -1050,23 +1050,30 @@ describe('LimitDBRedis', () => {
       });
     });
   
-    it('should NOT emit ping events when ping is disabled', (done) => {
-      let called = false;
-      db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, enabled: false} })      
-      db.once(('ping - success'), () => {
-        done(new Error('event `ping - success` emitted'));
+    const pingDisabledAlternatives = [
+      {ping: {...ping, enabled: false}, testName: 'false'},
+      {ping: {...ping, enabled: () => false}, testName: '()=>false'},
+      {ping: {...ping, enabled: undefined}, testName: 'undefined'},
+    ]
+
+    pingDisabledAlternatives.forEach(({ping, testName}) => {
+      it(`should NOT emit ping events when ping.enabled is ${testName}`, (done) => {
+        db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: ping })
+        db.once(('ping - success'), () => {
+          done(new Error('event `ping - success` emitted'));
+        });
+        db.once(('ping - error'), () => {
+          done(new Error('event `ping - error` emitted'));
+        });
+        db.once(('ping - reconnect attempted'), () => {
+          done(new Error('event `ping - reconnect attempted` emitted'));
+        });
+        //If after 100ms there are no interactions, we mark the test as passed.
+        setTimeout(done, 100)
       });
-      db.once(('ping - error'), () => {
-        done(new Error('event `ping - error` emitted'));
-      });
-      db.once(('ping - reconnect attempted'), () => {
-        done(new Error('event `ping - reconnect attempted` emitted'));
-      });
-      //If after 100ms there are no interactions, we mark the test as passed.
-      setTimeout(done, 100)
     });
 
-    it.only('should recover from a connection loss', (done) => {
+    it('should recover from a connection loss', (done) => {
       let pingResponded = false;
       let reconnected = false;
       let timeoutId;
@@ -1092,6 +1099,25 @@ describe('LimitDBRedis', () => {
       });
 
       timeoutId = setTimeout(() => done(new Error("Not reconnected")), 1800);
+    });
+
+    it('should start pinging when enabled() is flipped to true', (done) => {
+      let enabled = false;
+      let pingReceived = false;
+      db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, enabled: () => enabled, msBetweenEnabledChecks:10} })
+
+      setTimeout(() => enabled = true, 200);
+
+      db.on(('ping - success'), (duration) => {
+        pingReceived = true;
+        if (enabled) {
+          done();
+        } else {
+          done(new Error("Ping received while disabled"))
+        }
+      })
+
+      timeoutId = setTimeout(() => done(new Error("Ping not received")), 1800);
     });
   });
 });
