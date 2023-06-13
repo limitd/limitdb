@@ -1108,7 +1108,7 @@ describe('LimitDBRedis', () => {
 
       setTimeout(() => enabled = true, 200);
 
-      db.on(('ping - success'), (duration) => {
+      db.once(('ping - success'), (duration) => {
         pingReceived = true;
         if (enabled) {
           done();
