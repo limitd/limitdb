@@ -996,7 +996,7 @@ describe('LimitDBRedis Ping', () => {
     enabled: () => true,
     interval: 10,
     maxFailedAttempts: 3,
-    reconnectIfFailed: true,
+    reconnectIfFailed: () => true,
     maxFailedAttemptsToRetryReconnect: 10
   }
 
@@ -1040,9 +1040,9 @@ describe('LimitDBRedis Ping', () => {
     });
   });
 
-  it('should emit "ping - error" when redis stops responding pings and client is not configured to reconnect', (done) => {
+  it('should emit "ping - error" when redis stops responding pings', (done) => {
     let called = false;
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, reconnectIfFailed: false} })
+    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
     db.once(('ready'), () => {
       redisProxy.enabled = false
       redisProxy.update()
@@ -1056,7 +1056,7 @@ describe('LimitDBRedis Ping', () => {
     });
   });
 
-  it('should emit "ping - reconnect attempted" when redis stops responding pings and client is configured to reconnect', (done) => {
+  it('should emit "ping - reconnect" when redis stops responding pings and client is configured to reconnect', (done) => {
     let called = false;
     db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
     db.once(('ready'), () => {
@@ -1065,6 +1065,22 @@ describe('LimitDBRedis Ping', () => {
     })
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_RECONNECT && !called) {
+        called = true;
+        db.removeAllListeners('ping')
+        done();
+      }
+    });
+  });
+
+  it('should emit "ping - reconnect dry run" when redis stops responding pings and client is NOT configured to reconnect', (done) => {
+    let called = false;
+    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, reconnectIfFailed: () => false} })
+    db.once(('ready'), () => {
+      redisProxy.enabled = false;
+      redisProxy.update();
+    })
+    db.on(('ping'), (result) => {
+      if (result.status === LimitDB.PING_RECONNECT_DRY_RUN && !called) {
         called = true;
         db.removeAllListeners('ping')
         done();
