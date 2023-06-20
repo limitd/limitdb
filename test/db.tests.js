@@ -991,7 +991,7 @@ describe('LimitDBRedis', () => {
   });
 });
 
-describe('LimitDBRedis Ping', () => {
+describe.only('LimitDBRedis Ping', () => {
   let ping = {
     enabled: () => true,
     interval: 10,
@@ -1032,7 +1032,7 @@ describe('LimitDBRedis Ping', () => {
   })
 
   it('should emit ping success', (done) => {
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
     db.once(('ping'), (result) => {
       if (result.status === LimitDB.PING_SUCCESS) {
         done();
@@ -1042,7 +1042,7 @@ describe('LimitDBRedis Ping', () => {
 
   it('should emit "ping - error" when redis stops responding pings', (done) => {
     let called = false;
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
     db.once(('ready'), () => {
       redisProxy.enabled = false
       redisProxy.update()
@@ -1058,7 +1058,7 @@ describe('LimitDBRedis Ping', () => {
 
   it('should emit "ping - reconnect" when redis stops responding pings and client is configured to reconnect', (done) => {
     let called = false;
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
     db.once(('ready'), () => {
       redisProxy.enabled = false;
       redisProxy.update();
@@ -1074,7 +1074,7 @@ describe('LimitDBRedis Ping', () => {
 
   it('should emit "ping - reconnect dry run" when redis stops responding pings and client is NOT configured to reconnect', (done) => {
     let called = false;
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, reconnectIfFailed: () => false} })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, reconnectIfFailed: () => false} })
     db.once(('ready'), () => {
       redisProxy.enabled = false;
       redisProxy.update();
@@ -1096,8 +1096,8 @@ describe('LimitDBRedis Ping', () => {
 
   pingDisabledAlternatives.forEach(({ping, testName}) => {
     it(`should NOT emit ping events when ping.enabled is ${testName}`, (done) => {
-      db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: ping })
-
+      db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: ping })
+      
       db.once(('ping'), (result) => {
         done(new Error(`unexpected ping event emitted ${result}`))
       })
@@ -1111,18 +1111,7 @@ describe('LimitDBRedis Ping', () => {
     let pingResponded = false;
     let reconnected = false;
     let timeoutId;
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, interval: 50} })
-
-    db.on(('error'), (err) => {
-      //As we closed the connection, there might be network-related errors while attempting to reconnect
-      if (err?.message.indexOf('enableOfflineQueue') > 0) {
-        err = undefined;
-      }
-
-      if (err) {
-        done(err)
-      }
-    })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, interval: 50} })
 
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_SUCCESS) {
@@ -1151,7 +1140,7 @@ describe('LimitDBRedis Ping', () => {
   it('should start pinging when enabled() is flipped to true', (done) => {
     let enabled = false;
     let pingReceived = false;
-    db = new LimitDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, enabled: () => enabled, msBetweenEnabledChecks:10} })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, enabled: () => enabled, msBetweenEnabledChecks:10} })
 
     setTimeout(() => enabled = true, 200);
 
@@ -1169,4 +1158,22 @@ describe('LimitDBRedis Ping', () => {
 
     timeoutId = setTimeout(() => done(new Error("Ping not received")), 1800);
   });
+
+  const createDB = (config) => {
+    let tmpDB = new LimitDB(config)
+
+    tmpDB.on(('error'), (err) => {
+      console.log("ERROR")
+      //As we actively close the connection, there might be network-related errors while attempting to reconnect
+      if (err?.message.indexOf('enableOfflineQueue') > 0) {
+        err = undefined;
+      }
+
+      if (err) {
+        done(err)
+      }
+    })
+
+    return tmpDB
+  }
 });
