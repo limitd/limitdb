@@ -1088,23 +1088,15 @@ describe.only('LimitDBRedis Ping', () => {
     });
   });
 
-  const pingDisabledAlternatives = [
-    {ping: {...ping, enabled: false}, testName: 'false'},
-    {ping: {...ping, enabled: () => false}, testName: '()=>false'},
-    {ping: {...ping, enabled: undefined}, testName: 'undefined'},
-  ]
+  it(`should NOT emit ping events when config.ping is not set`, (done) => {
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: undefined })
+    
+    db.once(('ping'), (result) => {
+      done(new Error(`unexpected ping event emitted ${result}`))
+    })
 
-  pingDisabledAlternatives.forEach(({ping, testName}) => {
-    it(`should NOT emit ping events when ping.enabled is ${testName}`, (done) => {
-      db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: ping })
-      
-      db.once(('ping'), (result) => {
-        done(new Error(`unexpected ping event emitted ${result}`))
-      })
-
-      //If after 100ms there are no interactions, we mark the test as passed.
-      setTimeout(done, 100)
-    });
+    //If after 100ms there are no interactions, we mark the test as passed.
+    setTimeout(done, 100)
   });
 
   it('should recover from a connection loss', (done) => {
@@ -1135,28 +1127,6 @@ describe.only('LimitDBRedis Ping', () => {
     })
 
     timeoutId = setTimeout(() => done(new Error("Not reconnected")), 1800);
-  });
-
-  it('should start pinging when enabled() is flipped to true', (done) => {
-    let enabled = false;
-    let pingReceived = false;
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, enabled: () => enabled, msBetweenEnabledChecks:10} })
-
-    setTimeout(() => enabled = true, 200);
-
-    db.on(('ping'), (result) => {
-      if (result.status === LimitDB.PING_SUCCESS) {
-        pingReceived = true;
-        db.removeAllListeners('ping')
-        if (enabled) {
-          done();
-        } else {
-          done(new Error("Ping received while disabled"))
-        }
-      }
-    })
-
-    timeoutId = setTimeout(() => done(new Error("Ping not received")), 1800);
   });
 
   const createDB = (config) => {
