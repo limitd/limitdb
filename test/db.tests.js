@@ -1163,7 +1163,6 @@ describe.only('LimitDBRedis Ping', () => {
     let tmpDB = new LimitDB(config)
 
     tmpDB.on(('error'), (err) => {
-      console.log("ERROR")
       //As we actively close the connection, there might be network-related errors while attempting to reconnect
       if (err?.message.indexOf('enableOfflineQueue') > 0) {
         err = undefined;
