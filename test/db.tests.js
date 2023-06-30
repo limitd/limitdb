@@ -4,7 +4,7 @@ const async    = require('async');
 const _        = require('lodash');
 const LimitDB  = require('../lib/db');
 const assert   = require('chai').assert;
-const {Toxiproxy} = require('toxiproxy-node-client');
+const {Toxiproxy, Toxic} = require('toxiproxy-node-client');
 const crypto  = require('crypto')
 
 const buckets = {
@@ -991,13 +991,20 @@ describe('LimitDBRedis', () => {
   });
 });
 
-describe.only('LimitDBRedis Ping', () => {
+describe('LimitDBRedis Ping', () => {
   let ping = {
     enabled: () => true,
     interval: 10,
     maxFailedAttempts: 3,
     reconnectIfFailed: () => true,
     maxFailedAttemptsToRetryReconnect: 10
+  }
+
+  let config = {
+    uri: 'localhost:22222', 
+    buckets, 
+    prefix: 'tests:',
+    ping,
   }
 
   let redisProxy;
@@ -1042,11 +1049,9 @@ describe.only('LimitDBRedis Ping', () => {
 
   it('should emit "ping - error" when redis stops responding pings', (done) => {
     let called = false;
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
-    db.once(('ready'), () => {
-      redisProxy.enabled = false
-      redisProxy.update()
-    })
+
+    db = createDB(config)
+    db.once(('ready'), () => addLatencyToxic(redisProxy, 20000, noop));
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_ERROR && !called) {
         called = true;
@@ -1058,11 +1063,8 @@ describe.only('LimitDBRedis Ping', () => {
 
   it('should emit "ping - reconnect" when redis stops responding pings and client is configured to reconnect', (done) => {
     let called = false;
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
-    db.once(('ready'), () => {
-      redisProxy.enabled = false;
-      redisProxy.update();
-    })
+    db = createDB(config)
+    db.once(('ready'), () => addLatencyToxic(redisProxy, 20000, noop));
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_RECONNECT && !called) {
         called = true;
@@ -1074,11 +1076,8 @@ describe.only('LimitDBRedis Ping', () => {
 
   it('should emit "ping - reconnect dry run" when redis stops responding pings and client is NOT configured to reconnect', (done) => {
     let called = false;
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, reconnectIfFailed: () => false} })
-    db.once(('ready'), () => {
-      redisProxy.enabled = false;
-      redisProxy.update();
-    })
+    db = createDB({ ...config, ping: {...ping, reconnectIfFailed: () => false} })
+    db.once(('ready'), () => addLatencyToxic(redisProxy, 20000, noop));
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_RECONNECT_DRY_RUN && !called) {
         called = true;
@@ -1089,7 +1088,7 @@ describe.only('LimitDBRedis Ping', () => {
   });
 
   it(`should NOT emit ping events when config.ping is not set`, (done) => {
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: undefined })
+    db = createDB({ ...config, ping: undefined })
     
     db.once(('ping'), (result) => {
       done(new Error(`unexpected ping event emitted ${result}`))
@@ -1102,26 +1101,24 @@ describe.only('LimitDBRedis Ping', () => {
   it('should recover from a connection loss', (done) => {
     let pingResponded = false;
     let reconnected = false;
+    let toxic = undefined;
     let timeoutId;
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping: {...ping, interval: 50} })
+    db = createDB({ ...config, ping: {...ping, interval: 50} })
 
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_SUCCESS) {
         if (!pingResponded) {
           pingResponded = true;
-          redisProxy.remove();
+          toxic = addLatencyToxic(redisProxy, 20000, (t) => toxic = t);
         } else if (reconnected) {
           clearTimeout(timeoutId);
           db.removeAllListeners('ping')
           done();
         }
       } else if (result.status === LimitDB.PING_RECONNECT) {
-        if (pingResponded && !reconnected) {
+        if (pingResponded && !reconnected ) {
           reconnected = true;
-          toxiproxy.createProxy(proxyBody)
-            .then((proxy) => {
-              redisProxy = proxy; 
-            })
+          toxic.remove();
         }
       }
     })
@@ -1145,4 +1142,14 @@ describe.only('LimitDBRedis Ping', () => {
 
     return tmpDB
   }
+
+  const addLatencyToxic = (proxy, latency, callback) => {
+    let toxic = new Toxic(
+      proxy, 
+      {type: "latency", attributes: { latency: latency }}
+    )
+    proxy.addToxic(toxic).then(callback)
+  }
+
+  const noop = () => {}
 });
