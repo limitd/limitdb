@@ -65,6 +65,11 @@ const buckets = {
       faster: {
         size: 3,
         per_second: 1,
+      },
+      disabled: {
+        size: 5,
+        per_hour: 2,
+        disable_cache: true
       }
     }
   }
@@ -533,11 +538,10 @@ describe('LimitDBRedis', () => {
           assert.ifError(err);
           assert.equal(res.conformant, false);
           assert.equal(res.remaining, 0);
-
           assert.equal(db.cache.has('cached:fixed'), false);
           done();
         });
-      })
+      });
     });
 
     it('should cache buckets intervals until their reset', (done) => {
@@ -554,7 +558,7 @@ describe('LimitDBRedis', () => {
           assert(ms('29m') < ttl);
           done();
         });
-      })
+      });
     });
     it('should cache buckets accurately in small windows', (done) => {
       db.take({type: 'cached', key: 'faster', count: 3}, (err, res) => {
@@ -570,7 +574,22 @@ describe('LimitDBRedis', () => {
           assert(ms('900ms') < ttl);
           done();
         });
-      })
+      });
+    });
+
+    it('should not cache when disable_cache is true', (done) => {
+      db.take({type: 'cached', key: 'disabled', count: 5}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'disabled'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(db.cache.has('cached:disabled'), false);
+          done();
+        });
+      });
     });
   });
 
