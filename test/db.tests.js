@@ -1039,7 +1039,7 @@ describe('LimitDBRedis Ping', () => {
   })
 
   it('should emit ping success', (done) => {
-    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping })
+    db = createDB({ uri: 'localhost:22222', buckets, prefix: 'tests:', ping }, done)
     db.once(('ping'), (result) => {
       if (result.status === LimitDB.PING_SUCCESS) {
         done();
@@ -1050,7 +1050,7 @@ describe('LimitDBRedis Ping', () => {
   it('should emit "ping - error" when redis stops responding pings', (done) => {
     let called = false;
 
-    db = createDB(config)
+    db = createDB(config, done)
     db.once(('ready'), () => addLatencyToxic(redisProxy, 20000, noop));
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_ERROR && !called) {
@@ -1063,7 +1063,7 @@ describe('LimitDBRedis Ping', () => {
 
   it('should emit "ping - reconnect" when redis stops responding pings and client is configured to reconnect', (done) => {
     let called = false;
-    db = createDB(config)
+    db = createDB(config, done)
     db.once(('ready'), () => addLatencyToxic(redisProxy, 20000, noop));
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_RECONNECT && !called) {
@@ -1076,7 +1076,7 @@ describe('LimitDBRedis Ping', () => {
 
   it('should emit "ping - reconnect dry run" when redis stops responding pings and client is NOT configured to reconnect', (done) => {
     let called = false;
-    db = createDB({ ...config, ping: {...ping, reconnectIfFailed: () => false} })
+    db = createDB({ ...config, ping: {...ping, reconnectIfFailed: () => false} }, done)
     db.once(('ready'), () => addLatencyToxic(redisProxy, 20000, noop));
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_RECONNECT_DRY_RUN && !called) {
@@ -1088,7 +1088,7 @@ describe('LimitDBRedis Ping', () => {
   });
 
   it(`should NOT emit ping events when config.ping is not set`, (done) => {
-    db = createDB({ ...config, ping: undefined })
+    db = createDB({ ...config, ping: undefined }, done)
     
     db.once(('ping'), (result) => {
       done(new Error(`unexpected ping event emitted ${result}`))
@@ -1103,7 +1103,7 @@ describe('LimitDBRedis Ping', () => {
     let reconnected = false;
     let toxic = undefined;
     let timeoutId;
-    db = createDB({ ...config, ping: {...ping, interval: 50} })
+    db = createDB({ ...config, ping: {...ping, interval: 50} }, done)
 
     db.on(('ping'), (result) => {
       if (result.status === LimitDB.PING_SUCCESS) {
@@ -1126,16 +1126,17 @@ describe('LimitDBRedis Ping', () => {
     timeoutId = setTimeout(() => done(new Error("Not reconnected")), 1800);
   });
 
-  const createDB = (config) => {
+  const createDB = (config, done) => {
     let tmpDB = new LimitDB(config)
 
     tmpDB.on(('error'), (err) => {
       //As we actively close the connection, there might be network-related errors while attempting to reconnect
-      if (err?.message.indexOf('enableOfflineQueue') > 0) {
+      if (err?.message.indexOf('enableOfflineQueue') > 0 || err?.message.indexOf('Command timed out') >= 0) {
         err = undefined;
       }
 
       if (err) {
+        console.log(err, err.message)
         done(err)
       }
     })
@@ -1150,6 +1151,8 @@ describe('LimitDBRedis Ping', () => {
     )
     proxy.addToxic(toxic).then(callback)
   }
+
+
 
   const noop = () => {}
 });
