@@ -538,6 +538,7 @@ describe('LimitDBRedis', () => {
           assert.ifError(err);
           assert.equal(res.conformant, false);
           assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
           assert.equal(db.cache.has('cached:fixed'), false);
           done();
         });
@@ -553,6 +554,7 @@ describe('LimitDBRedis', () => {
           assert.ifError(err);
           assert.equal(res.conformant, false);
           assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
           const ttl = db.cache.getRemainingTTL('cached:test');
           assert(ms('30m') > ttl);
           assert(ms('29m') < ttl);
@@ -569,6 +571,7 @@ describe('LimitDBRedis', () => {
           assert.ifError(err);
           assert.equal(res.conformant, false);
           assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
           const ttl = db.cache.getRemainingTTL('cached:faster');
           assert(ms('1s') > ttl);
           assert(ms('900ms') < ttl);
@@ -586,8 +589,30 @@ describe('LimitDBRedis', () => {
           assert.ifError(err);
           assert.equal(res.conformant, false);
           assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
           assert.equal(db.cache.has('cached:disabled'), false);
           done();
+        });
+      });
+    });
+    it('should indicate the response came from cache', (done) => {
+      db.take({type: 'cached', key: 'test', count: 3}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'test'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
+
+          db.take({type: 'cached', key: 'test'}, (err, res) => {
+            assert.ifError(err);
+            assert.equal(res.conformant, false);
+            assert.equal(res.remaining, 0);
+            assert.equal(res.cached, true);
+            done();
+          });
         });
       });
     });
