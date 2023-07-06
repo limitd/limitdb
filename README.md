@@ -46,7 +46,7 @@ Buckets:
 - `per_interval` (number): is the amount of tokens that the bucket receive on every interval.
 - `interval` (number): defines the interval in milliseconds.
 - `unlimited` (boolean = false): unlimited requests (skip take).
-- `disable_cache` (boolean = false): prevent cacheing when a bucket is empty until the next drip.
+- `disable_cache` (boolean = false): prevent caching when a bucket is empty until the next drip.
 
 You can also define your rates using `per_second`, `per_minute`, `per_hour`, `per_day`. So `per_second: 1` is equivalent to `per_interval: 1, interval: 1000`.
 
