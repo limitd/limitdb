@@ -13,6 +13,7 @@
   "author": "Auth0",
   "license": "MIT",
   "dependencies": {
+    "@isaacs/ttlcache": "^1.4.0",
     "async": "^2.6.1",
     "disyuntor": "^3.5.0",
     "ioredis": "^4.28.5",

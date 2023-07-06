@@ -54,6 +54,24 @@ const buckets = {
   tenant: {
     size: 1,
     per_second: 1
+  },
+  cached: {
+    size: 3,
+    per_hour: 2,
+    overrides: {
+      fixed: {
+        size: 5
+      },
+      faster: {
+        size: 3,
+        per_second: 1,
+      },
+      disabled: {
+        size: 5,
+        per_hour: 2,
+        disable_cache: true
+      }
+    }
   }
 };
 
@@ -507,6 +525,94 @@ describe('LimitDBRedis', () => {
           assert.notOk(response.conformant);
           assert.equal(response.remaining, 0);
           done();
+        });
+      });
+    });
+
+    it('should not cache fixed buckets', (done) => {
+      db.take({type: 'cached', key: 'fixed', count: 5}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'fixed'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
+          assert.equal(db.cache.has('cached:fixed'), false);
+          done();
+        });
+      });
+    });
+
+    it('should cache buckets intervals until their reset', (done) => {
+      db.take({type: 'cached', key: 'test', count: 3}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'test'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
+          const ttl = db.cache.getRemainingTTL('cached:test');
+          assert(ms('30m') > ttl);
+          assert(ms('29m') < ttl);
+          done();
+        });
+      });
+    });
+    it('should cache buckets accurately in small windows', (done) => {
+      db.take({type: 'cached', key: 'faster', count: 3}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'faster'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
+          const ttl = db.cache.getRemainingTTL('cached:faster');
+          assert(ms('1s') > ttl);
+          assert(ms('900ms') < ttl);
+          done();
+        });
+      });
+    });
+
+    it('should not cache when disable_cache is true', (done) => {
+      db.take({type: 'cached', key: 'disabled', count: 5}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'disabled'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
+          assert.equal(db.cache.has('cached:disabled'), false);
+          done();
+        });
+      });
+    });
+    it('should indicate the response came from cache', (done) => {
+      db.take({type: 'cached', key: 'test', count: 3}, (err, res) => {
+        assert.ifError(err);
+        assert.equal(res.conformant, true);
+        assert.equal(res.remaining, 0);
+        db.take({type: 'cached', key: 'test'}, (err, res) => {
+          assert.ifError(err);
+          assert.equal(res.conformant, false);
+          assert.equal(res.remaining, 0);
+          assert.equal(res.cached, false);
+
+          db.take({type: 'cached', key: 'test'}, (err, res) => {
+            assert.ifError(err);
+            assert.equal(res.conformant, false);
+            assert.equal(res.remaining, 0);
+            assert.equal(res.cached, true);
+            done();
+          });
         });
       });
     });
