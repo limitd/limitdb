@@ -1,6 +1,6 @@
 {
   "name": "limitd-redis",
-  "version": "7.3.1",
+  "version": "7.4.0",
   "description": "A database client for limits on top of redis",
   "main": "index.js",
   "repository": {
@@ -13,6 +13,7 @@
   "author": "Auth0",
   "license": "MIT",
   "dependencies": {
+    "@isaacs/ttlcache": "^1.4.0",
     "async": "^2.6.1",
     "disyuntor": "^3.5.0",
     "ioredis": "^4.28.5",
