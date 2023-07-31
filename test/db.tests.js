@@ -60,18 +60,16 @@ const buckets = {
   cached: {
     size: 3,
     per_hour: 2,
+    enable_cache: true,
     overrides: {
-      fixed: {
-        size: 5
-      },
       faster: {
         size: 3,
         per_second: 1,
+        enable_cache: true
       },
       disabled: {
         size: 5,
         per_hour: 2,
-        disable_cache: true
       }
     }
   }
@@ -89,7 +87,7 @@ describe('LimitDBRedis', () => {
   });
 
   afterEach((done) => {
-    
+
     db.close((err) => {
       // Can't close DB if it was never open
       if (err?.message.indexOf('enableOfflineQueue') > 0) {
@@ -532,22 +530,6 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should not cache fixed buckets', (done) => {
-      db.take({type: 'cached', key: 'fixed', count: 5}, (err, res) => {
-        assert.ifError(err);
-        assert.equal(res.conformant, true);
-        assert.equal(res.remaining, 0);
-        db.take({type: 'cached', key: 'fixed'}, (err, res) => {
-          assert.ifError(err);
-          assert.equal(res.conformant, false);
-          assert.equal(res.remaining, 0);
-          assert.equal(res.cached, false);
-          assert.equal(db.cache.has('cached:fixed'), false);
-          done();
-        });
-      });
-    });
-
     it('should cache buckets intervals until their reset', (done) => {
       db.take({type: 'cached', key: 'test', count: 3}, (err, res) => {
         assert.ifError(err);
@@ -565,6 +547,7 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
     it('should cache buckets accurately in small windows', (done) => {
       db.take({type: 'cached', key: 'faster', count: 3}, (err, res) => {
         assert.ifError(err);
@@ -583,7 +566,7 @@ describe('LimitDBRedis', () => {
       });
     });
 
-    it('should not cache when disable_cache is true', (done) => {
+    it('should not cache when enable_cache is undefined', (done) => {
       db.take({type: 'cached', key: 'disabled', count: 5}, (err, res) => {
         assert.ifError(err);
         assert.equal(res.conformant, true);
@@ -598,6 +581,7 @@ describe('LimitDBRedis', () => {
         });
       });
     });
+
     it('should indicate the response came from cache', (done) => {
       db.take({type: 'cached', key: 'test', count: 3}, (err, res) => {
         assert.ifError(err);
@@ -1107,8 +1091,8 @@ describe('LimitDBRedis Ping', () => {
   }
 
   let config = {
-    uri: 'localhost:22222', 
-    buckets, 
+    uri: 'localhost:22222',
+    buckets,
     prefix: 'tests:',
     ping,
   }
@@ -1126,14 +1110,14 @@ describe('LimitDBRedis Ping', () => {
     };
     toxiproxy.createProxy(proxyBody)
     .then((proxy) => {
-      redisProxy = proxy; 
+      redisProxy = proxy;
       done();
     })
-    
+
   })
 
   afterEach((done) => {
-    redisProxy.remove().then(() => 
+    redisProxy.remove().then(() =>
       db.close((err) => {
         // Can't close DB if it was never open
         if (err?.message.indexOf('enableOfflineQueue') > 0 || err?.message.indexOf('Connection is closed') >= 0) {
@@ -1195,7 +1179,7 @@ describe('LimitDBRedis Ping', () => {
 
   it(`should NOT emit ping events when config.ping is not set`, (done) => {
     db = createDB({ ...config, ping: undefined }, done)
-    
+
     db.once(('ping'), (result) => {
       done(new Error(`unexpected ping event emitted ${result}`))
     })
@@ -1252,7 +1236,7 @@ describe('LimitDBRedis Ping', () => {
 
   const addLatencyToxic = (proxy, latency, callback) => {
     let toxic = new Toxic(
-      proxy, 
+      proxy,
       {type: "latency", attributes: { latency: latency }}
     )
     proxy.addToxic(toxic).then(callback)
