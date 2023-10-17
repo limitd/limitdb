@@ -52,6 +52,7 @@ Buckets:
 - `per_interval` (number): is the amount of tokens that the bucket receive on every interval.
 - `interval` (number): defines the interval in milliseconds.
 - `unlimited` (boolean = false): unlimited requests (skip take).
+- `skip_n_calls` (number): take will go to redis every `n` calls instead of going in every take. 
 
 Ping:
 
