@@ -57,21 +57,17 @@ const buckets = {
     size: 1,
     per_second: 1
   },
-  cached: {
+  global: {
     size: 3,
     per_hour: 2,
-    enable_cache: true,
     overrides: {
-      faster: {
+      skipit: {
+        skip_n_calls: 2,
         size: 3,
-        per_second: 1,
-        enable_cache: true
-      },
-      disabled: {
-        size: 5,
-        per_hour: 2,
+        per_hour: 3
       }
     }
+
   }
 };
 
@@ -530,6 +526,47 @@ describe('LimitDBRedis', () => {
       });
     });
 
+    it('should call redis and not set local cache count', (done) => {
+      const params = { type: 'global',  key: 'aTenant'};
+      db.take(params, (err) => {
+        if (err) {
+          return done(err);
+        }
+
+        assert.equal(db.callCounts['global:aTenant'], undefined);
+        done();
+      });
+    });
+
+    it('should skip calls', (done) => {
+      const params = { type: 'global',  key: 'skipit'};
+
+      async.series([
+        (cb) => db.take(params, cb), // redis
+        (cb) => db.take(params, cb), // cache
+        (cb) => db.take(params, cb), // cache
+        (cb) => {
+          assert.equal(db.callCounts.get('global:skipit').count, 2);
+          cb();
+        },
+        (cb) => db.take(params, cb), // redis
+        (cb) => db.take(params, cb), // cache
+        (cb) => db.take(params, cb), // cache
+        (cb) => db.take(params, cb), // redis (first nonconformant)
+        (cb) => db.take(params, cb), // cache (first cached)
+        (cb) => {
+          assert.equal(db.callCounts.get('global:skipit').count, 1);
+          assert.notOk(db.callCounts.get('global:skipit').res.conformant);
+          cb();
+        },
+      ], (err, _results) => {
+        if (err) {
+          return done(err);
+        }
+
+        done();
+      })
+    });
   });
 
   describe('PUT', () => {
