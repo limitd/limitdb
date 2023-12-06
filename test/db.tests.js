@@ -65,6 +65,11 @@ const buckets = {
         skip_n_calls: 2,
         size: 3,
         per_hour: 3
+      },
+      skipOne: {
+        skip_n_calls: 1,
+        size: 3,
+        per_hour: 0
       }
     }
 
@@ -536,6 +541,55 @@ describe('LimitDBRedis', () => {
         assert.equal(db.callCounts['global:aTenant'], undefined);
         done();
       });
+    });
+
+    it('should take correct skipped amount from redis', (done) => {
+      const params = { type: 'global',  key: 'skipOne'};
+
+      // skip 1
+      // size 3
+      // no refill
+
+      async.series([
+        (cb) => db.get(params, (_, {remaining}) => { assert.equal(remaining, 3); cb(); }),
+
+        // call 1 - redis - conformant
+        (cb) => db.take(params, cb), // redis - take 1
+        (cb) => db.get(params, (_, {remaining}) => { assert.equal(remaining, 2); cb(); }),
+
+        // call 2 - skipped - conformant
+        (cb) => db.take(params, cb), // skipped
+        (cb) => db.get(params, (_, {remaining}) => { assert.equal(remaining, 2); cb(); }),
+
+        // call 3 - redis - conformant
+        // takes 2 here, 1 for current call and one for previously skipped call
+        (cb) => db.take(params, cb),
+        (cb) => db.get(params, (_, {remaining}) => { assert.equal(remaining, 0); cb(); }),
+
+        // Note: this is the margin of error introduced by skip_n_calls
+        // call 4 - skipped - conformant
+        (cb) => db.take(params, cb), // skipped
+        (cb) => {
+          assert.ok(db.callCounts.get('global:skipOne').res.conformant);
+          cb();
+        },
+
+        // call 5 - redis - non-conformant
+        (cb) => db.take(params, (_, { conformant }) => {
+          assert.notOk(conformant);
+          cb();
+        }),
+        (cb) => {
+          assert.notOk(db.callCounts.get('global:skipOne').res.conformant);
+          cb();
+        },
+      ], (err, _results) => {
+        if (err) {
+          return done(err);
+        }
+
+        done();
+      })
     });
 
     it('should skip calls', (done) => {
